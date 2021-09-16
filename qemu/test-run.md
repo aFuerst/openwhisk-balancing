@@ -1,4 +1,25 @@
-# Run simple OW thing
+# Remember
+
+## Building & Pushing
+
+Prep:
+```bash
+sudo ./gradlew distDocker -PdockerImageTag=latest -PdockerImagePrefix=alfuerst
+
+# remember to logout or do on private machine
+docker login
+
+docker push alfuerst/invoker:latest
+docker push alfuerst/controller:latest
+docker push alfuerst/scheduler:latest
+```
+
+Run inside VM:
+```bash
+ansible-playbook -i environments/bal-distrib openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst > runlogs/distrib-ow.txt
+```
+
+## Run simple OW thing
 
 `{ow-home}/tools/admin/wskadmin user create afuerst`
 > "dacf4133-3c3a-42d5-956c-37200c35f427:eextGdxo1jX99Uh4ms6gnS760ExMJEG3jakg0DWJ1ldqJlukrQILpbSxEA92z3Kw"
