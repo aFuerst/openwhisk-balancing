@@ -94,6 +94,9 @@ controller:
   timeoutFactor: "{{ controller_timeout_factor | default(2) }}"
   timeoutAddon: "{{ controller_timeout_addon | default('1 m') }}"
   instances: "{{ groups['controllers'] | length }}"
+    invoker-load:
+      invoker-cores: "{{ controller_loadbalancer_invokerload_cores | default(4) }}"
+      c: "{{ controller_loadbalancer_invokerload_c | default(1) }}"
   akka:
     provider: cluster
     cluster:
@@ -104,9 +107,6 @@ controller:
       seedNodes: "{{ groups['controllers'] | map('extract', hostvars, 'ansible_host') | list }}"
   loadbalancer:
     spi: "{{ controller_loadbalancer_spi | default('') }}"
-    invoker-load:
-      invoker-cores: "{{ controller_loadbalancer_invokerload_cores | default(4) }}"
-      c: "{{ controller_loadbalancer_invokerload_c | default(1) }}"
   authentication:
     spi: "{{ controller_authentication_spi | default('') }}"
   loglevel: "{{ controller_loglevel | default(whisk_loglevel) | default('INFO') }}"
