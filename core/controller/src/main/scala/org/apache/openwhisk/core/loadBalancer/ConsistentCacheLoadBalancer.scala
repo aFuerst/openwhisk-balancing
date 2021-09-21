@@ -331,7 +331,7 @@ case class ConsistentCacheLoadBalancerState(
     _consistentHashList = List() ++ _consistentHash.getNodes().iterator().asScala
 
     logging.info(this,
-      s"loadbalancer invoker status updated. num invokers = $newSize")(
+      s"loadbalancer invoker status updated. num invokers = $newSize, invokerCores = ${lbConfig.invokerLoad.invokerCores} c = ${lbConfig.invokerLoad.c}")(
       TransactionId.loadbalancer)
   }
 
