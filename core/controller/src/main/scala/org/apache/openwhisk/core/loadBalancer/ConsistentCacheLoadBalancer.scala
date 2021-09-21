@@ -273,7 +273,7 @@ case class ConsistentCacheLoadBalancerState(
     {
       var node = possNode.get()
       val serverLoad = node.load.doubleValue()
-      val loadCuttoff = lbConfig.invokerLoad.invokerCores * lbConfig.invokerLoad.c
+      val loadCuttoff = lbConfig.invokerLoad.cores * lbConfig.invokerLoad.c
       if (serverLoad <= loadCuttoff)
       {
         /* assign load to node */
@@ -331,7 +331,7 @@ case class ConsistentCacheLoadBalancerState(
     _consistentHashList = List() ++ _consistentHash.getNodes().iterator().asScala
 
     logging.info(this,
-      s"loadbalancer invoker status updated. num invokers = $newSize, invokerCores = ${lbConfig.invokerLoad.invokerCores} c = ${lbConfig.invokerLoad.c}")(
+      s"loadbalancer invoker status updated. num invokers = $newSize, invokerCores = ${lbConfig.invokerLoad.cores} c = ${lbConfig.invokerLoad.c}")(
       TransactionId.loadbalancer)
   }
 

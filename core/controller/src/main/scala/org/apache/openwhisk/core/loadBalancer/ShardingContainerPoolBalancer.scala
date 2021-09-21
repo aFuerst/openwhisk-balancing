@@ -605,7 +605,7 @@ case class ClusterConfig(useClusterBootstrap: Boolean)
                                                timeoutFactor: Int,
                                                timeoutAddon: FiniteDuration)
 
-case class InvokerLoadConfig(invokerCores: Int,
+case class InvokerLoadConfig(cores: Int,
                               c: Double) 
 
 /**

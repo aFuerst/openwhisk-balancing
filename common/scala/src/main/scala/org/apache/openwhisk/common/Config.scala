@@ -156,7 +156,7 @@ object Config {
   def readPropertiesFromSystem(properties: scala.collection.mutable.Map[String, String])(implicit logging: Logging) = {
     for (p <- properties.keys) {
       val sysv = Option(System.getProperty(prefix + p))
-      logging.info(this, s"trying to pull system for $envp")
+      logging.info(this, s"trying to pull system for $sysv")
       if (sysv.isDefined) {
         logging.info(this, s"system set value for $p")
         properties += p -> sysv.get.trim

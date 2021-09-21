@@ -261,10 +261,10 @@
       "CONFIG_whisk_loadbalancer_timeoutAddon":
         "{{ controller.timeoutAddon }}"
 
-      "CONFIG_whisk_loadbalancer_invokerload_c":
-        "{{ controller.invokerLoad.c }}"
-      "CONFIG_whisk_loadbalancer_invokerload_invokerCores":
-        "{{ controller.invokerLoad.invokerCores }}"
+      "CONFIG_whisk_loadbalancer_invoker_c":
+        "{{ controller.invoker.c }}"
+      "CONFIG_whisk_loadbalancer_invoker_cores":
+        "{{ controller.invoker.cores }}"
 
 
       "CONFIG_kamon_statsd_hostname": "{{ metrics.kamon.host }}"
