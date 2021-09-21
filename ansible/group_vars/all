@@ -105,8 +105,8 @@ controller:
   loadbalancer:
     spi: "{{ controller_loadbalancer_spi | default('') }}"
     invoker-load:
-      invoker-cores: "{{ controller_loadbalancer_invokerload_cores | 4 }}"
-      c: "{{ controller_loadbalancer_invokerload_c | 1 }}"
+      invoker-cores: "{{ controller_loadbalancer_invokerload_cores | default(4) }}"
+      c: "{{ controller_loadbalancer_invokerload_c | default(1) }}"
   authentication:
     spi: "{{ controller_authentication_spi | default('') }}"
   loglevel: "{{ controller_loglevel | default(whisk_loglevel) | default('INFO') }}"
