@@ -145,6 +145,7 @@ object Config {
     for (p <- properties.keys) {
       val envp = p.replace('.', '_').toUpperCase
       val envv = env.get(envp)
+      logging.info(this, s"trying to pull environment for $envp")
       if (envv.isDefined) {
         logging.info(this, s"environment set value for $p")
         properties += p -> envv.get.trim
@@ -155,6 +156,7 @@ object Config {
   def readPropertiesFromSystem(properties: scala.collection.mutable.Map[String, String])(implicit logging: Logging) = {
     for (p <- properties.keys) {
       val sysv = Option(System.getProperty(prefix + p))
+      logging.info(this, s"trying to pull system for $envp")
       if (sysv.isDefined) {
         logging.info(this, s"system set value for $p")
         properties += p -> sysv.get.trim
