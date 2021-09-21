@@ -100,6 +100,8 @@ object Invoker {
     val poolConfig: ContainerPoolConfig = loadConfigOrThrow[ContainerPoolConfig](ConfigKeys.containerPool)
     val limitConfig: ConcurrencyLimitConfig = loadConfigOrThrow[ConcurrencyLimitConfig](ConfigKeys.concurrencyLimit)
 
+    logger.info(this, s"Invoker information: userMemory = ${poolConfig.userMemory}")
+
     // Prepare Kamon shutdown
     CoordinatedShutdown(actorSystem).addTask(CoordinatedShutdown.PhaseActorSystemTerminate, "shutdownKamon") { () =>
       logger.info(this, s"Shutting down Kamon with coordinated shutdown")
