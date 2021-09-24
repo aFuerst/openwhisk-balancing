@@ -16,7 +16,10 @@ docker push alfuerst/scheduler:latest
 
 Run inside VM:
 ```bash
-nsible-playbook -i environments/bal-distrib openwhisk.yml -e mode=clean &&  ansible-playbook -i environments/bal-distrib controller.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="5120m" -e controller_loadbalancer_invoker_cores=5 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2
+ansible-playbook -i environments/bal-distrib openwhisk.yml -e mode=clean &&  ansible-playbook -i environments/bal-distrib controller.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="5120m" -e controller_loadbalancer_invoker_cores=5 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2
+
+# for redis
+ansible-playbook -i environments/$ENVIRONMENT apigateway.yml
 
 ansible-playbook -i environments/bal-distrib openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst > runlogs/distrib-ow.txt
 ```

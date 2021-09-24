@@ -39,6 +39,10 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
+import redis.clients.jedis.{Jedis}
+// import spray.json._
+// import DefaultJsonProtocol._
+
 /**
  * Abstract class which provides common logic for all LoadBalancer implementations.
  */
@@ -65,6 +69,15 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
   protected val totalBlackBoxActivationMemory = new LongAdder()
   protected val totalManagedActivationMemory = new LongAdder()
 
+  protected  def updateActionTimes() = {
+    val r = new Jedis("172.17.0.1", 6379)
+    // val warmData = warmHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
+    // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
+    val warm = r.get("warm")
+    val cold = r.get("cold")
+    logging.info(this, s"Got updated action times from Redis, warm:${warm}, cold:${cold}")
+  }
+
   protected def emitMetrics() = {
     MetricEmitter.emitGaugeMetric(LOADBALANCER_ACTIVATIONS_INFLIGHT(controllerInstance), totalActivations.longValue)
     MetricEmitter.emitGaugeMetric(
@@ -79,6 +92,7 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
   }
 
   actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => emitMetrics())
+  actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => updateActionTimes())
 
   override def activeActivationsFor(namespace: UUID): Future[Int] =
     Future.successful(activationsPerNamespace.get(namespace).map(_.intValue).getOrElse(0))

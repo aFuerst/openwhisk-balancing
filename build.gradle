@@ -71,6 +71,8 @@ subprojects {
             dependencies {
               // https://github.com/ishugaliy/allgood-consistent-hash
               compile group: 'com.github.ishugaliy', name: 'allgood-consistent-hash', version: '1.0.0'
+              compile group: 'redis.clients', name: 'jedis', version:'3.6.0'
+
             }
 
             tasks.withType(ScalaCompile) {

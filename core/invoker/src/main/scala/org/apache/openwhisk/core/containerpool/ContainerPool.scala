@@ -35,10 +35,15 @@ sealed trait WorkerState
 case object Busy extends WorkerState
 case object Free extends WorkerState
 import scala.util.{Random, Try}
+import redis.clients.jedis.{Jedis}
+// import spray.json._
+// import DefaultJsonProtocol._
 
 case class ColdStartKey(kind: String, memory: ByteSize)
 
 case object EmitMetrics
+
+case object UpdateControllerRuntimes
 
 case object AdjustPrewarmedContainer
 
@@ -65,7 +70,8 @@ case object AdjustPrewarmedContainer
 class ContainerPool(childFactory: ActorRefFactory => ActorRef,
                     feed: ActorRef,
                     prewarmConfig: List[PrewarmingConfig] = List.empty,
-                    poolConfig: ContainerPoolConfig)(implicit val logging: Logging)
+                    poolConfig: ContainerPoolConfig,
+                    instance: InvokerInstanceId)(implicit val logging: Logging)
     extends Actor {
   import ContainerPool.memoryConsumptionOf
 
@@ -104,6 +110,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
   val logMessageInterval = 10.seconds
   //periodically emit metrics (don't need to do this for each message!)
   context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, EmitMetrics)
+  context.system.scheduler.scheduleAtFixedRate(30.seconds, 5.seconds, self, UpdateControllerRuntimes)
 
   // Key is ColdStartKey, value is the number of cold Start in minute
   var coldStartCount = immutable.Map.empty[ColdStartKey, Int]
@@ -466,6 +473,9 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
     case EmitMetrics =>
       emitMetrics()
 
+    case UpdateControllerRuntimes =>
+      updateController()
+
     case AdjustPrewarmedContainer =>
       adjustPrewarmedContainer(false, true)
   }
@@ -687,6 +697,15 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
     val unusedMB = unused.map(_._2.memoryLimit.toMB).sum
     MetricEmitter.emitGaugeMetric(LoggingMarkers.CONTAINER_POOL_IDLES_COUNT, unused.size)
     MetricEmitter.emitGaugeMetric(LoggingMarkers.CONTAINER_POOL_IDLES_SIZE, unusedMB)
+  }
+
+  private def updateController() = {
+    logging.info(this, s"Updating action times in Redis")
+    val r = new Jedis("172.17.0.1", 6379)
+    // val warmData = warmHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
+    // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
+    r.set("warm", "a -> 2")
+    r.set("cold", "a -> 5")
   }
 }
 
@@ -956,8 +975,9 @@ object ContainerPool {
   def props(factory: ActorRefFactory => ActorRef,
             poolConfig: ContainerPoolConfig,
             feed: ActorRef,
-            prewarmConfig: List[PrewarmingConfig] = List.empty)(implicit logging: Logging) =
-    Props(new ContainerPool(factory, feed, prewarmConfig, poolConfig))
+            prewarmConfig: List[PrewarmingConfig] = List.empty,
+                    instance: InvokerInstanceId)(implicit logging: Logging) =
+    Props(new ContainerPool(factory, feed, prewarmConfig, poolConfig, instance))
 }
 
 /** Contains settings needed to perform container prewarming. */
