@@ -70,12 +70,16 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
   protected val totalManagedActivationMemory = new LongAdder()
 
   protected  def updateActionTimes() = {
-    val r = new Jedis("172.17.0.1", 6379)
-    // val warmData = warmHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
-    // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
-    val warm = r.get("warm")
-    val cold = r.get("cold")
-    logging.info(this, s"Got updated action times from Redis, warm:${warm}, cold:${cold}")
+    try {
+      val r = new Jedis("172.17.0.1", 6379)
+      // val warmData = warmHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
+      // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
+      val warm = r.get("warm")
+      val cold = r.get("cold")
+      logging.info(this, s"Got updated action times from Redis, warm:${warm}, cold:${cold}")
+    } catch {
+        case e: redis.clients.jedis.exceptions.JedisDataException => logging.info(this, s"Failed to log into redis server")
+    }
   }
 
   protected def emitMetrics() = {

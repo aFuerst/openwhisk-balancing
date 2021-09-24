@@ -3,6 +3,7 @@
 172.29.200.166 ansible_connection=ssh ansible_user=ow
 172.29.200.167 ansible_connection=ssh ansible_user=ow
 172.29.200.168 ansible_connection=ssh ansible_user=ow
+ansible ansible_connection=local
 
 [edge]
 172.29.200.161          ansible_host=172.29.200.161 ansible_connection=ssh
