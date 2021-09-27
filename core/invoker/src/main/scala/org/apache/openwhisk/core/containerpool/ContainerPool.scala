@@ -36,8 +36,8 @@ case object Busy extends WorkerState
 case object Free extends WorkerState
 import scala.util.{Random, Try}
 import redis.clients.jedis.{Jedis}
-// import spray.json._
-// import DefaultJsonProtocol._
+import spray.json._
+import DefaultJsonProtocol._
 
 case class ColdStartKey(kind: String, memory: ByteSize)
 
@@ -110,7 +110,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
   val logMessageInterval = 10.seconds
   //periodically emit metrics (don't need to do this for each message!)
   context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, EmitMetrics)
-  context.system.scheduler.scheduleAtFixedRate(30.seconds, 5.seconds, self, UpdateControllerRuntimes)
+  context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, UpdateControllerRuntimes)
 
   // Key is ColdStartKey, value is the number of cold Start in minute
   var coldStartCount = immutable.Map.empty[ColdStartKey, Int]
@@ -474,7 +474,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
       emitMetrics()
 
     case UpdateControllerRuntimes =>
-      updateController()
+      updateController(instance)
 
     case AdjustPrewarmedContainer =>
       adjustPrewarmedContainer(false, true)
@@ -699,13 +699,19 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
     MetricEmitter.emitGaugeMetric(LoggingMarkers.CONTAINER_POOL_IDLES_SIZE, unusedMB)
   }
 
-  private def updateController() = {
-    logging.info(this, s"Updating action times in Redis")
-    val r = new Jedis("172.17.0.1", 6379)
-    // val warmData = warmHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
-    // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
-    r.set("warm", "a -> 2")
-    r.set("cold", "a -> 5")
+  private def updateController(instance: InvokerInstanceId) = {
+    try {
+      // logging.info(this, s"Updating action times in Redis")
+      val redisClient = new Jedis("172.17.0.1", 6379)
+      redisClient.auth("openwhisk")
+      
+      val data = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2, warmHitsAct.getOrElse(pair._1, 1L))).toList.toJson.compactPrint
+      // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toList.toJson.compactPrint
+      redisClient.set(s"${instance.instance}/warm-cold-data", data)
+      // redisClient.set(s"${instance.instance}/cold", coldData)
+    } catch {
+        case e: redis.clients.jedis.exceptions.JedisDataException => logging.info(this, s"Failed to log into redis server, $e")
+    }
   }
 }
 

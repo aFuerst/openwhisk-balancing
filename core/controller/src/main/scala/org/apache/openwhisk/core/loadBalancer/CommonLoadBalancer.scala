@@ -40,8 +40,8 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 import redis.clients.jedis.{Jedis}
-// import spray.json._
-// import DefaultJsonProtocol._
+import spray.json._
+import DefaultJsonProtocol._
 
 /**
  * Abstract class which provides common logic for all LoadBalancer implementations.
@@ -71,14 +71,20 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
 
   protected  def updateActionTimes() = {
     try {
+      logging.info(this, s"Connecting to Redis")
       val r = new Jedis("172.17.0.1", 6379)
-      // val warmData = warmHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
-      // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toJson
-      val warm = r.get("warm")
-      val cold = r.get("cold")
-      logging.info(this, s"Got updated action times from Redis, warm:${warm}, cold:${cold}")
+      r.auth("openwhisk")
+
+      val data = r.get("0/warm-cold-data")
+      logging.info(this, s"Got json from Redis, warm:${data}")
+      val parsedData = data.parseJson.convertTo[List[(String,Long,Long)]]
+      // val cold = r.get("0/cold")
+      // logging.info(this, s"Got json from Redis, cold:${cold}")
+      // val coldObject = warm.parseJson.convertTo[List[(String,Long)]]
+      // logging.info(this, s"Got updated action times from Redis, warm:${warm}, cold:${cold}")
     } catch {
-        case e: redis.clients.jedis.exceptions.JedisDataException => logging.info(this, s"Failed to log into redis server")
+        case e: redis.clients.jedis.exceptions.JedisDataException => logging.error(this, s"Failed to log into redis server, $e")
+        case scala.util.control.NonFatal(t) => logging.error(this, s"Unkonwn error, $t")
     }
   }
 

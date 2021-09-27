@@ -41,12 +41,15 @@ import org.apache.openwhisk.spi.SpiLoader
 import scala.concurrent.Future
 import scala.collection.JavaConverters._
 import java.util.concurrent.atomic.AtomicInteger
-import scala.math.{min, max}
+import scala.math.{min} //, max}
 import scala.collection.mutable
 import java.time.Instant
 
 import org.ishugaliy.allgood.consistent.hash.{HashRing, ConsistentHash}
 import org.ishugaliy.allgood.consistent.hash.node.{Node}
+import redis.clients.jedis.{Jedis}
+import spray.json._
+import DefaultJsonProtocol._
 
 /**
  * A loadbalancer that schedules workload based on power-of-two consistent hashing-algorithm.
@@ -176,6 +179,26 @@ class ConsistentCacheLoadBalancer(
   override protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
       schedulingState.stateReleaseInvoker(invoker, entry)
   }
+
+  override protected def updateActionTimes() = {
+    try {
+      logging.info(this, s"Connecting to Redis")
+      val r = new Jedis("172.17.0.1", 6379)
+      r.auth("openwhisk")
+      
+      for (invoker <- schedulingState.invokers)
+      {
+        val id = invoker.id.instance
+        val data = r.get(s"$id/warm-cold-data")
+        logging.info(this, s"Got json from Redis, invoker: $id, warm:${data}")
+        val parsedData = data.parseJson.convertTo[List[(String,Long,Long)]]
+        schedulingState.updateRuntimeData(parsedData)
+      }
+    } catch {
+        case e: redis.clients.jedis.exceptions.JedisDataException => logging.error(this, s"Failed to log into redis server, $e")
+        case scala.util.control.NonFatal(t) => logging.error(this, s"Unkonwn error, $t")
+    }
+  }  
 }
 
 object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
@@ -247,8 +270,8 @@ case class ConsistentCacheLoadBalancerState(
   private var _consistentHash: ConsistentHash[ConsisntentCacheInvokerNode] = HashRing.newBuilder().build(),
   private var _consistentHashList: List[ConsisntentCacheInvokerNode] = List(),
 
-  private var startTimes: mutable.Map[ActivationId, Long] = mutable.Map.empty[ActivationId, Long],
-  private var runTimes: mutable.Map[FullyQualifiedEntityName, (Long, Long)] = mutable.Map.empty[FullyQualifiedEntityName, (Long, Long)], // (warm, cold)
+  // private var startTimes: mutable.Map[ActivationId, Long] = mutable.Map.empty[ActivationId, Long],
+  private var runTimes: mutable.Map[String, (Long, Long)] = mutable.Map.empty[String, (Long, Long)], // (warm, cold)
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -261,14 +284,22 @@ case class ConsistentCacheLoadBalancerState(
     Instant.now().toEpochMilli()
   }
 
+  def updateRuntimeData(data: List[(String,Long,Long)]) : Unit = {
+    for (packet <- data)
+    {
+      runTimes += (packet._1 -> (packet._2, packet._3))
+    }
+  }
+
   private def updateTrackingData(node: ConsisntentCacheInvokerNode, activationId: ActivationId) : Option[InvokerInstanceId] = {
     node.load.incrementAndGet()
-    startTimes += (activationId -> getMilis())
+    // startTimes += (activationId -> getMilis())
     return Some(node.invoker)
   }
 
   def getInvoker(fqn: FullyQualifiedEntityName, activationId: ActivationId) : Option[InvokerInstanceId] = {
-    val possNode = _consistentHash.locate(fqn.toString)
+    val strName = s"${fqn.namespace}/${fqn.name}"
+    val possNode = _consistentHash.locate(strName)
     if (possNode.isPresent)
     {
       var node = possNode.get()
@@ -295,7 +326,7 @@ case class ConsistentCacheLoadBalancerState(
         }
         else 
         {
-          var times = runTimes.getOrElse(fqn, (0L, 0L))
+          var times = runTimes.getOrElse(strName, (0L, 0L))
           var r: Double = 0
           if (times._2 != 0)
           {
@@ -340,21 +371,21 @@ case class ConsistentCacheLoadBalancerState(
     found.map { invok =>
       invok.load.decrementAndGet()
 
-      val found = startTimes get entry.id
-      var times = runTimes.getOrElse(entry.fullyQualifiedEntityName, (1000000000000L, 0L))
+      // val found = startTimes get entry.id
+      // var times = runTimes.getOrElse(entry.fullyQualifiedEntityName, (1000000000000L, 0L))
 
-      found match {
-        case Some(startTime) => {
-          val elapsed = getMilis() - startTime
-          val warm = min(times._1, elapsed)
-          val cold = max(times._2, elapsed)
-          runTimes += (entry.fullyQualifiedEntityName -> (warm, cold))
-          logging.info(
-            this,
-            s"Updated times for ${entry.fullyQualifiedEntityName} to ${(warm, cold)}")
-        }
-        case None => logging.error(this, s"Unexpected data invoker '${invoker}' with entry '${entry}'")
-      }
+      // found match {
+      //   case Some(startTime) => {
+      //     val elapsed = getMilis() - startTime
+      //     val warm = min(times._1, elapsed)
+      //     val cold = max(times._2, elapsed)
+      //     runTimes += (entry.fullyQualifiedEntityName -> (warm, cold))
+      //     logging.info(
+      //       this,
+      //       s"Updated times for ${entry.fullyQualifiedEntityName} to ${(warm, cold)}")
+      //   }
+      //   case None => logging.error(this, s"Unexpected data invoker '${invoker}' with entry '${entry}'")
+      // }
 
       logging.info(
         this,
