@@ -183,8 +183,9 @@ class ConsistentCacheLoadBalancer(
   override protected def updateActionTimes() = {
     try {
       logging.info(this, s"Connecting to Redis")
-      val r = new Jedis("172.17.0.1", 6379)
-      r.auth("openwhisk")
+      // val r = new Jedis("lbConfig.redis.ip", 1111)
+      val r = new Jedis(lbConfig.redis.ip, lbConfig.redis.port)
+      r.auth(lbConfig.redis.password)
       
       for (invoker <- schedulingState.invokers)
       {

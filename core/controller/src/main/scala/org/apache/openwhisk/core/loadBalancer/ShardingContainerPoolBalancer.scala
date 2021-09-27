@@ -592,6 +592,13 @@ case class ShardingContainerPoolBalancerState(
  */
 case class ClusterConfig(useClusterBootstrap: Boolean)
 
+case class InvokerLoadConfig(cores: Int,
+                              c: Double) 
+
+case class RedisLbConfig(password: String,
+                         port: Int,
+                         ip: String)
+
 /**
  * Configuration for the sharding container pool balancer.
  *
@@ -599,14 +606,12 @@ case class ClusterConfig(useClusterBootstrap: Boolean)
  * @param timeoutFactor factor to influence the timeout period for forced active acks (time-limit.std * timeoutFactor + timeoutAddon)
  * @param timeoutAddon extra time to influence the timeout period for forced active acks (time-limit.std * timeoutFactor + timeoutAddon)
  */
- case class ShardingContainerPoolBalancerConfig(invoker: InvokerLoadConfig,
+case class ShardingContainerPoolBalancerConfig(invoker: InvokerLoadConfig,
+                                               redis: RedisLbConfig,
                                                managedFraction: Double,
                                                blackboxFraction: Double,
                                                timeoutFactor: Int,
                                                timeoutAddon: FiniteDuration)
-
-case class InvokerLoadConfig(cores: Int,
-                              c: Double) 
 
 /**
  * State kept for each activation slot until completion.

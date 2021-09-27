@@ -72,8 +72,8 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
   protected  def updateActionTimes() = {
     try {
       logging.info(this, s"Connecting to Redis")
-      val r = new Jedis("172.17.0.1", 6379)
-      r.auth("openwhisk")
+      val r = new Jedis(lbConfig.redis.ip, lbConfig.redis.port)
+      r.auth(lbConfig.redis.password)
 
       val data = r.get("0/warm-cold-data")
       logging.info(this, s"Got json from Redis, warm:${data}")

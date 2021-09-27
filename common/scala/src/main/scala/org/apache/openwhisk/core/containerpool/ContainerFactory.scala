@@ -44,7 +44,12 @@ case class ContainerArgsConfig(network: String,
     }.toMap
 }
 
+case class RedisPoolConfig(password: String,
+                         port: Int,
+                         ip: String)
+
 case class ContainerPoolConfig(userMemory: ByteSize,
+                               redis: RedisPoolConfig,
                                concurrentPeekFactor: Double,
                                akkaClient: Boolean,
                                prewarmExpirationCheckInitDelay: FiniteDuration,

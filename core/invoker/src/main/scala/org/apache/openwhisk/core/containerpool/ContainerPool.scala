@@ -702,8 +702,8 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
   private def updateController(instance: InvokerInstanceId) = {
     try {
       // logging.info(this, s"Updating action times in Redis")
-      val redisClient = new Jedis("172.17.0.1", 6379)
-      redisClient.auth("openwhisk")
+      val redisClient = new Jedis(poolConfig.redis.ip, poolConfig.redis.port)
+      redisClient.auth(poolConfig.redis.password)
       
       val data = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2, warmHitsAct.getOrElse(pair._1, 1L))).toList.toJson.compactPrint
       // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toList.toJson.compactPrint

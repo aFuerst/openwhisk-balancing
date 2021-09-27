@@ -265,7 +265,12 @@
         "{{ controller.invoker.c }}"
       "CONFIG_whisk_loadbalancer_invoker_cores":
         "{{ controller.invoker.cores }}"
-
+      "CONFIG_whisk_loadbalancer_redis_password":
+        "{{ controller.redis.password }}"
+      "CONFIG_whisk_loadbalancer_redis_port":
+        "{{ controller.redis.port }}"
+      "CONFIG_whisk_loadbalancer_redis_ip":
+        "{{ controller.redis.ip }}"
 
       "CONFIG_kamon_statsd_hostname": "{{ metrics.kamon.host }}"
       "CONFIG_kamon_statsd_port": "{{ metrics.kamon.port }}"
