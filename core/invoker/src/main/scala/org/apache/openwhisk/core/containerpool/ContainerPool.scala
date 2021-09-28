@@ -701,16 +701,17 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
 
   private def updateController(instance: InvokerInstanceId) = {
     try {
-      // logging.info(this, s"Updating action times in Redis")
       val redisClient = new Jedis(poolConfig.redis.ip, poolConfig.redis.port)
       redisClient.auth(poolConfig.redis.password)
       
-      val data = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2, warmHitsAct.getOrElse(pair._1, 1L))).toList.toJson.compactPrint
-      // val coldData = coldHitsAct.map(pair => (s"${pair._1.namespace}/${pair._1.name}", pair._2)).toList.toJson.compactPrint
+      val data = priorities.map(pair => {
+        (s"${pair._1.namespace}/${pair._1.name}", pair._2.warmTime, pair._2.coldTime)
+      }).toList.toJson.compactPrint
+      logging.info(this, s"Updating action times in Redis $data")
       redisClient.set(s"${instance.instance}/warm-cold-data", data)
-      // redisClient.set(s"${instance.instance}/cold", coldData)
     } catch {
         case e: redis.clients.jedis.exceptions.JedisDataException => logging.info(this, s"Failed to log into redis server, $e")
+        case scala.util.control.NonFatal(t) => logging.error(this, s"Unkonwn error, $t")
     }
   }
 }

@@ -20,12 +20,10 @@ ENVIRONMENT="bal-distrib"
 redisPass='OpenWhisk'
 redisPort=6379
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean
-ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="5120m" -e controller_loadbalancer_invoker_cores=5 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort
+ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="5120m" -e controller_loadbalancer_invoker_cores=5 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000
 
 # for redis
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e redis_port=$redisPort -e redis_pass=$redisPass
-
-ansible-playbook -i environments/bal-distrib openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst > runlogs/distrib-ow.txt
 ```
 
 ## Run simple OW thing

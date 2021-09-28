@@ -41,7 +41,7 @@ import org.apache.openwhisk.spi.SpiLoader
 import scala.concurrent.Future
 import scala.collection.JavaConverters._
 import java.util.concurrent.atomic.AtomicInteger
-import scala.math.{min} //, max}
+import scala.math.{min, max}
 import scala.collection.mutable
 import java.time.Instant
 
@@ -251,11 +251,14 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
   }
 }
 
-class ConsisntentCacheInvokerNode(_invoker: InvokerInstanceId)
+class ConsisntentCacheInvokerNode(_invoker: InvokerInstanceId, _load: Option[AtomicInteger])(implicit logging: Logging)
   extends Node {
   
   val invoker : InvokerInstanceId = _invoker
-  var load : AtomicInteger = new AtomicInteger(0)
+  logging.info(this,
+        s"ConsisntentCacheInvokerNode created for invoker '${_invoker}' with passed load of '${_load}'")
+
+  var load : AtomicInteger = _load.getOrElse(new AtomicInteger(0))
 
   override def getKey() : String = {
     invoker.toString
@@ -288,7 +291,8 @@ case class ConsistentCacheLoadBalancerState(
   def updateRuntimeData(data: List[(String,Long,Long)]) : Unit = {
     for (packet <- data)
     {
-      runTimes += (packet._1 -> (packet._2, packet._3))
+      val current_data = runTimes.getOrElse(packet._1, (1L, 1L))
+      runTimes += (packet._1 -> (max(packet._2, current_data._1), max(packet._3, current_data._2)) )
     }
   }
 
@@ -328,10 +332,11 @@ case class ConsistentCacheLoadBalancerState(
         else 
         {
           var times = runTimes.getOrElse(strName, (0L, 0L))
-          var r: Double = 0
-          if (times._2 != 0)
+          var r: Double = 1
+          if (times._1 != 0)
           {
             r = times._2 / times._1
+            r = min(r, 5.0)
           }
           if (loadCuttoff <= r-1)
           {
@@ -356,14 +361,19 @@ case class ConsistentCacheLoadBalancerState(
     val newSize = newInvokers.size
 
     val newHash : ConsistentHash[ConsisntentCacheInvokerNode] = HashRing.newBuilder().build()
-    newInvokers.map {invoker => newHash.add(new ConsisntentCacheInvokerNode(invoker.id))} // .toString()
+    newInvokers.map { invoker => 
+      
+      val currentLoad: Option[AtomicInteger] = _consistentHashList.find(p => p.invoker == invoker.id).map { _.load }
+      newHash.add(new ConsisntentCacheInvokerNode(invoker.id, currentLoad))
+    
+    } // .toString()
 
     _invokers = newInvokers
     _consistentHash = newHash
     _consistentHashList = List() ++ _consistentHash.getNodes().iterator().asScala
 
     logging.info(this,
-      s"loadbalancer invoker status updated. num invokers = $newSize, invokerCores = ${lbConfig.invoker.cores} c = ${lbConfig.invoker.c}")(
+      s"loadbalancer invoker status updated. num invokers = ${newSize}, invokerCores = ${lbConfig.invoker.cores} c = ${lbConfig.invoker.c}")(
       TransactionId.loadbalancer)
   }
 
