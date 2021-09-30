@@ -38,6 +38,9 @@ import scala.util.{Random, Try}
 import redis.clients.jedis.{Jedis}
 import spray.json._
 import DefaultJsonProtocol._
+// import java.lang.management.OperatingSystemMXBean
+import com.sun.management.OperatingSystemMXBean
+import java.lang.management.ManagementFactory
 
 case class ColdStartKey(kind: String, memory: ByteSize)
 
@@ -111,6 +114,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
   //periodically emit metrics (don't need to do this for each message!)
   context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, EmitMetrics)
   context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, UpdateControllerRuntimes)
+  val osBean: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean().asInstanceOf[OperatingSystemMXBean]
 
   // Key is ColdStartKey, value is the number of cold Start in minute
   var coldStartCount = immutable.Map.empty[ColdStartKey, Int]
@@ -394,17 +398,23 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
           case Some((startTime, state)) => {
             if (state == "warmed")
             {
-              // val old = (warmTimes get warmData.action).getOrElse(0L)
-              priority_data.warmTime = Math.max(priority_data.warmTime, (now - startTime))
-              // warmTimes += (warmData.action -> Math.max(old, (now - startTime)))
-              // logging.info(this, s"Warm action ${warmData.action} finished in ${now - startTime}")
+              val newTime = now - startTime
+              if (priority_data.warmTime == 0) {
+                priority_data.warmTime = newTime
+              }
+              else {
+                priority_data.warmTime = priority_data.warmTime * 0.9 + (0.1 * newTime)
+              }
             }
             else
             {
-              // val old = (coldTimes get warmData.action).getOrElse(0L)
-              // coldTimes += (warmData.action -> Math.max(old, (now - startTime)))
-              priority_data.coldTime = Math.max(priority_data.coldTime, (now - startTime))
-              // logging.info(this, s"Prewarmed action ${warmData.action} finished in ${now - startTime} from state ${state}")
+              val newTime = now - startTime
+              if (priority_data.coldTime == 0) {
+                priority_data.coldTime = newTime
+              }
+              else {
+                priority_data.coldTime = priority_data.coldTime * 0.9 + (0.1 * newTime)
+              }
             }
           }
           case None => logging.error(this, s"Unexpected data incoming ${warmData} from sender ${sender}")
@@ -707,8 +717,20 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
       val data = priorities.map(pair => {
         (s"${pair._1.namespace}/${pair._1.name}", pair._2.warmTime, pair._2.coldTime)
       }).toList.toJson.compactPrint
-      logging.info(this, s"Updating action times in Redis $data")
       redisClient.set(s"${instance.instance}/warm-cold-data", data)
+
+      val containersInUse = freePool.filter(_._2.activeActivationCount > 0) ++ busyPool
+      var containerActiveMem = containersInUse.map(_._2.memoryLimit.toMB).sum
+      redisClient.set(s"${instance.instance}/active-mem", containerActiveMem.toString)
+
+      var allContainers = freePool ++ busyPool
+      val usedMem = allContainers.map(_._2.memoryLimit.toMB).sum
+      redisClient.set(s"${instance.instance}/used-mem", usedMem.toString)
+
+      val cpuLoad = osBean.getSystemCpuLoad()
+      redisClient.set(s"${instance.instance}/cpu-load", cpuLoad.toString)
+
+      logging.info(this, s"Updated data in Redis data: $data, containerActiveMem: $containerActiveMem, usedMem: $usedMem")
     } catch {
         case e: redis.clients.jedis.exceptions.JedisDataException => logging.info(this, s"Failed to log into redis server, $e")
         case scala.util.control.NonFatal(t) => logging.error(this, s"Unkonwn error, $t")

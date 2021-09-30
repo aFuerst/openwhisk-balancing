@@ -41,9 +41,8 @@ import org.apache.openwhisk.spi.SpiLoader
 import scala.concurrent.Future
 import scala.collection.JavaConverters._
 import java.util.concurrent.atomic.AtomicInteger
-import scala.math.{min, max}
+import scala.math.{min} //, max}
 import scala.collection.mutable
-import java.time.Instant
 
 import org.ishugaliy.allgood.consistent.hash.{HashRing, ConsistentHash}
 import org.ishugaliy.allgood.consistent.hash.node.{Node}
@@ -182,7 +181,7 @@ class ConsistentCacheLoadBalancer(
 
   override protected def updateActionTimes() = {
     try {
-      logging.info(this, s"Connecting to Redis")
+      // logging.info(this, s"Connecting to Redis")
       // val r = new Jedis("lbConfig.redis.ip", 1111)
       val r = new Jedis(lbConfig.redis.ip, lbConfig.redis.port)
       r.auth(lbConfig.redis.password)
@@ -191,14 +190,22 @@ class ConsistentCacheLoadBalancer(
       {
         val id = invoker.id.instance
         val data = r.get(s"$id/warm-cold-data")
-        logging.info(this, s"Got json from Redis, invoker: $id, warm:${data}")
-        val parsedData = data.parseJson.convertTo[List[(String,Long,Long)]]
+        // logging.info(this, s"Got json from Redis, invoker: $id, warm:${data}")
+        val parsedData = data.parseJson.convertTo[List[(String,Double,Double)]]
         schedulingState.updateRuntimeData(parsedData)
+
+        val activeMem = r.get(s"$id/active-mem")
+        val usedMem = r.get(s"$id/used-mem")
+        schedulingState.updateMemUsage(invoker.id, activeMem.toDouble, usedMem.toDouble)
+
+        val cpuLoad = r.get(s"$id/cpu-load")
+        schedulingState.updateCPUUsage(invoker.id, cpuLoad.toDouble)
       }
     } catch {
         case e: redis.clients.jedis.exceptions.JedisDataException => logging.error(this, s"Failed to log into redis server, $e")
         case scala.util.control.NonFatal(t) => logging.error(this, s"Unkonwn error, $t")
     }
+    schedulingState.emitMetrics()
   }  
 }
 
@@ -275,7 +282,9 @@ case class ConsistentCacheLoadBalancerState(
   private var _consistentHashList: List[ConsisntentCacheInvokerNode] = List(),
 
   // private var startTimes: mutable.Map[ActivationId, Long] = mutable.Map.empty[ActivationId, Long],
-  private var runTimes: mutable.Map[String, (Long, Long)] = mutable.Map.empty[String, (Long, Long)], // (warm, cold)
+  private var runTimes: mutable.Map[String, (Double, Double)] = mutable.Map.empty[String, (Double, Double)], // (warm, cold)
+  private var cpuLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  private var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -284,21 +293,44 @@ case class ConsistentCacheLoadBalancerState(
   /** Getters for the variables, setting from the outside is only allowed through the update methods below */
   def invokers: IndexedSeq[InvokerHealth] = _invokers
 
-  private def getMilis(): Long = {
-    Instant.now().toEpochMilli()
+  def updateCPUUsage(invoker: InvokerInstanceId, load: Double) : Unit = {
+    cpuLoad += (invoker -> load)
   }
 
-  def updateRuntimeData(data: List[(String,Long,Long)]) : Unit = {
+  def updateMemUsage(invoker: InvokerInstanceId, activeMem: Double, usedMem: Double) : Unit = {
+    memLoad += (invoker -> (usedMem, activeMem))
+  }
+
+  def emitMetrics() : Unit = {
+    logging.info(this, s"Current system int= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad")
+  }
+
+  def updateRuntimeData(data: List[(String,Double,Double)]) : Unit = {
     for (packet <- data)
     {
-      val current_data = runTimes.getOrElse(packet._1, (1L, 1L))
-      runTimes += (packet._1 -> (max(packet._2, current_data._1), max(packet._3, current_data._2)) )
+      val current_data = runTimes.getOrElse(packet._1, (0.0, 0.0))
+      var warmTime = current_data._1
+      if (warmTime == 0){
+        warmTime = packet._2
+      }
+      var coldTime = current_data._2
+      if (coldTime == 0){
+        coldTime = packet._3
+      }
+      if (packet._2 > 0)
+      {
+        warmTime = current_data._1 * 0.9 + (0.1 * packet._2)
+      }
+      if (packet._3 > 0)
+      {
+        coldTime = current_data._2 * 0.9 + (0.1 * packet._3)
+      }
+      runTimes += (packet._1 -> (warmTime, coldTime) )
     }
   }
 
   private def updateTrackingData(node: ConsisntentCacheInvokerNode, activationId: ActivationId) : Option[InvokerInstanceId] = {
     node.load.incrementAndGet()
-    // startTimes += (activationId -> getMilis())
     return Some(node.invoker)
   }
 
@@ -307,41 +339,37 @@ case class ConsistentCacheLoadBalancerState(
     val possNode = _consistentHash.locate(strName)
     if (possNode.isPresent)
     {
-      var node = possNode.get()
-      val serverLoad = node.load.doubleValue()
-      val loadCuttoff = lbConfig.invoker.cores * lbConfig.invoker.c
-      if (serverLoad <= loadCuttoff)
-      {
+      var original_node = possNode.get()
+      val orig_serverLoad = original_node.load.doubleValue() / lbConfig.invoker.cores
+      var node = original_node
+      val loadCuttoff = 2.0 * lbConfig.invoker.c
+      if (orig_serverLoad <= loadCuttoff) {
         /* assign load to node */
-        return updateTrackingData(node, activationId)
+        return updateTrackingData(original_node, activationId)
       }
 
-      val idx = _consistentHashList.indexWhere( p => p.invoker == node.invoker)
+      val idx = _consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
       val cutoff = min(_invokers.length, loadCuttoff).toInt
+      var times = runTimes.getOrElse(strName, (0.0, 0.0))
+      var r: Double = 1
+      if (times._1 != 0.0) {
+        r = times._2 / times._1
+        r = min(r, 5.0)
+      }
 
-      for (i <- 0 to cutoff)
-      {
-        var id = (cutoff + i) % _invokers.length
+      for (i <- 0 to cutoff) {
+        var id = (idx + i) % _invokers.length
         node = _consistentHashList(id)
+        val serverLoad = node.load.doubleValue() / lbConfig.invoker.cores
 
-        if (serverLoad <= loadCuttoff)
-        {
+        if (serverLoad <= loadCuttoff) {
+          logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
           /* assign load to node */
           return updateTrackingData(node, activationId)
         }
-        else 
-        {
-          var times = runTimes.getOrElse(strName, (0L, 0L))
-          var r: Double = 1
-          if (times._1 != 0)
-          {
-            r = times._2 / times._1
-            r = min(r, 5.0)
-          }
-          if (loadCuttoff <= r-1)
-          {
-            return updateTrackingData(node, activationId)
-          }
+        else if (serverLoad <= r-1) {
+          logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
+          return updateTrackingData(node, activationId)
         }
       }
       /* went around enough, give up */
@@ -381,23 +409,6 @@ case class ConsistentCacheLoadBalancerState(
     val found = _consistentHashList.find(node => node.invoker == invoker)
     found.map { invok =>
       invok.load.decrementAndGet()
-
-      // val found = startTimes get entry.id
-      // var times = runTimes.getOrElse(entry.fullyQualifiedEntityName, (1000000000000L, 0L))
-
-      // found match {
-      //   case Some(startTime) => {
-      //     val elapsed = getMilis() - startTime
-      //     val warm = min(times._1, elapsed)
-      //     val cold = max(times._2, elapsed)
-      //     runTimes += (entry.fullyQualifiedEntityName -> (warm, cold))
-      //     logging.info(
-      //       this,
-      //       s"Updated times for ${entry.fullyQualifiedEntityName} to ${(warm, cold)}")
-      //   }
-      //   case None => logging.error(this, s"Unexpected data invoker '${invoker}' with entry '${entry}'")
-      // }
-
       logging.info(
         this,
         s"Activation ${entry} released on invoker ${invoker}, current load: ${invok.load}")
