@@ -302,7 +302,7 @@ case class ConsistentCacheLoadBalancerState(
   }
 
   def emitMetrics() : Unit = {
-    logging.info(this, s"Current system int= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad")
+    logging.info(this, s"Current system data= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad")
   }
 
   def updateRuntimeData(data: List[(String,Double,Double)]) : Unit = {

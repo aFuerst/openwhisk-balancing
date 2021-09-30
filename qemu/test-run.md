@@ -19,6 +19,38 @@ Run inside VM:
 ENVIRONMENT="bal-distrib"
 redisPass='OpenWhisk'
 redisPort=6379
+
+cat >db_local.ini << EOL
+[db_creds]
+db_provider=CouchDB
+db_username=OwCouch
+db_password=OWCOUCH
+db_protocol=http
+db_host=172.29.200.161
+db_port=5989
+
+[controller]
+db_provider=CouchDB
+db_username=OwCouch
+db_password=OWCOUCH
+db_protocol=http
+db_host=172.29.200.161
+db_port=5989
+
+[invoker]
+db_provider=CouchDB
+db_username=OwCouch
+db_password=OWCOUCH
+db_protocol=http
+db_host=172.29.200.161
+db_port=5989
+EOL
+
+ansible-playbook -i environments/$ENVIRONMENT properties.yml
+ansible-playbook -i environments/$ENVIRONMENT couchdb.yml
+ansible-playbook -i environments/$ENVIRONMENT initdb.yml
+ansible-playbook -i environments/$ENVIRONMENT wipe.yml
+
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="5120m" -e controller_loadbalancer_invoker_cores=5 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000
 

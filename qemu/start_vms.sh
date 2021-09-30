@@ -39,18 +39,18 @@ rm -f $debug
 
 qemu-img create -f qcow2 \
                 -o backing_file=$drive \
-                $guestimg
+                $guestimg 20G
 
 qemu-system-x86_64 \
     -enable-kvm \
-    -smp cpus=12 -cpu host \
+    -smp cpus=6 -cpu host \
     -m 24G \
     -daemonize \
     -nographic \
     -display none \
     -monitor  telnet:$tel,server,nowait \
     -netdev bridge,id=$net,br=br0 \
-    -device virtio-net-pci,netdev=$net,mac=$macaddr \
+    -device virtio-net-pci,netdev=$net,mac=$mac \
     -drive file="$guestimg",if=virtio,aio=threads,format=qcow2 \
     -debugcon file:$debug -global isa-debugcon.iobase=0x402
 
