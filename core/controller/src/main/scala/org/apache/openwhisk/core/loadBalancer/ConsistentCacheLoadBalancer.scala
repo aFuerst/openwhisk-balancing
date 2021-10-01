@@ -140,7 +140,7 @@ class ConsistentCacheLoadBalancer(
   override def publish(action: ExecutableWhiskActionMetaData, msg: ActivationMessage)(
     implicit transid: TransactionId): Future[Future[Either[ActivationId, WhiskActivation]]] = {
 
-      val chosen = ConsistentCacheLoadBalancer.schedule(action.fullyQualifiedName(true), schedulingState, msg.activationId)
+      val chosen = ConsistentCacheLoadBalancer.schedule(action.fullyQualifiedName(true), schedulingState, msg.activationId, lbConfig.loadStrategy)
 
     chosen.map { invoker => 
       // MemoryLimit() and TimeLimit() return singletons - they should be fast enough to be used here
@@ -252,9 +252,16 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
   def schedule(
     fqn: FullyQualifiedEntityName,
     state: ConsistentCacheLoadBalancerState,
-    activationId: ActivationId)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
+    activationId: ActivationId,
+    loadStrategy: String)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
       logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
-      state.getInvoker(fqn, activationId)
+      loadStrategy match {
+        case "simpleload" => state.getInvoker(fqn, activationId)
+        case _ => {
+          logging.error(this, s"Unsupported loadbalancing strat ${loadStrategy}")
+          None
+        }
+      }
   }
 }
 

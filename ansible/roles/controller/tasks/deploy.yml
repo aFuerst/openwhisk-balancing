@@ -271,6 +271,8 @@
         "{{ controller.redis.port }}"
       "CONFIG_whisk_loadbalancer_redis_ip":
         "{{ controller.redis.ip }}"
+      "CONFIG_whisk_loadbalancer_loadStrategy":
+        "{{ controller.loadStrategy }}"
 
       "CONFIG_kamon_statsd_hostname": "{{ metrics.kamon.host }}"
       "CONFIG_kamon_statsd_port": "{{ metrics.kamon.port }}"

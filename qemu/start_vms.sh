@@ -39,7 +39,7 @@ rm -f $debug
 
 qemu-img create -f qcow2 \
                 -o backing_file=$drive \
-                $guestimg 20G
+                $guestimg
 
 qemu-system-x86_64 \
     -enable-kvm \

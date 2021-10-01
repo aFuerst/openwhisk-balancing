@@ -101,6 +101,7 @@ controller:
     password: "{{ controller_loadbalancer_redis_password | default('openwhisk') }}"
     port: "{{ controller_loadbalancer_redis_port | default(6379) }}"
     ip: "{{ groups['redis'] | first }}"
+  loadStrategy: "{{ controller_loadstrategy | default('simpleload') }}"
   akka:
     provider: cluster
     cluster:
