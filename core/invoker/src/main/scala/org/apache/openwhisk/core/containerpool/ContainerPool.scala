@@ -18,7 +18,8 @@
 package org.apache.openwhisk.core.containerpool
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
-import org.apache.openwhisk.common.{Logging, LoggingMarkers, MetricEmitter, TransactionId}
+import org.apache.openwhisk.common.{Logging, LoggingMarkers, MetricEmitter, TransactionId, RedisPacket}
+import org.apache.openwhisk.common.RedisPacketProtocol._
 import org.apache.openwhisk.core.connector.MessageFeed
 import org.apache.openwhisk.core.entity.ExecManifest.ReactivePrewarmingConfig
 import org.apache.openwhisk.core.entity._
@@ -37,7 +38,7 @@ case object Free extends WorkerState
 import scala.util.{Random, Try}
 import redis.clients.jedis.{Jedis}
 import spray.json._
-import DefaultJsonProtocol._
+// import DefaultJsonProtocol._
 // import java.lang.management.OperatingSystemMXBean
 import com.sun.management.OperatingSystemMXBean
 import java.lang.management.ManagementFactory
@@ -714,21 +715,22 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
       val redisClient = new Jedis(poolConfig.redis.ip, poolConfig.redis.port)
       redisClient.auth(poolConfig.redis.password)
       
+
       val data = priorities.map(pair => {
         (s"${pair._1.namespace}/${pair._1.name}", pair._2.warmTime, pair._2.coldTime)
-      }).toList.toJson.compactPrint
-      redisClient.set(s"${instance.instance}/warm-cold-data", data)
-
+      }).toList
       val containersInUse = freePool.filter(_._2.activeActivationCount > 0) ++ busyPool
       var containerActiveMem = containersInUse.map(_._2.memoryLimit.toMB).sum
-      redisClient.set(s"${instance.instance}/active-mem", containerActiveMem.toString)
-
       var allContainers = freePool ++ busyPool
       val usedMem = allContainers.map(_._2.memoryLimit.toMB).sum
-      redisClient.set(s"${instance.instance}/used-mem", usedMem.toString)
-
+      
       val cpuLoad = osBean.getSystemCpuLoad()
-      redisClient.set(s"${instance.instance}/cpu-load", cpuLoad.toString)
+      var running = containersInUse.size
+      var runAndQ = running + runBuffer.size
+      
+      var packet = new RedisPacket(data, containerActiveMem, usedMem, running, runAndQ, cpuLoad)
+      val sendJson = packet.toJson.compactPrint
+      redisClient.set(s"${instance.instance}/packet", sendJson)
 
       logging.info(this, s"Updated data in Redis data: $data, containerActiveMem: $containerActiveMem, usedMem: $usedMem")
     } catch {

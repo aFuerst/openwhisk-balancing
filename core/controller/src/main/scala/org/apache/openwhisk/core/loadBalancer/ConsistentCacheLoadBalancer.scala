@@ -48,7 +48,7 @@ import org.ishugaliy.allgood.consistent.hash.{HashRing, ConsistentHash}
 import org.ishugaliy.allgood.consistent.hash.node.{Node}
 import redis.clients.jedis.{Jedis}
 import spray.json._
-import DefaultJsonProtocol._
+import org.apache.openwhisk.common.RedisPacketProtocol._
 
 /**
  * A loadbalancer that schedules workload based on power-of-two consistent hashing-algorithm.
@@ -189,17 +189,11 @@ class ConsistentCacheLoadBalancer(
       for (invoker <- schedulingState.invokers)
       {
         val id = invoker.id.instance
-        val data = r.get(s"$id/warm-cold-data")
-        // logging.info(this, s"Got json from Redis, invoker: $id, warm:${data}")
-        val parsedData = data.parseJson.convertTo[List[(String,Double,Double)]]
-        schedulingState.updateRuntimeData(parsedData)
+        val packet = r.get(s"$id/packet").parseJson.convertTo[RedisPacket]
 
-        val activeMem = r.get(s"$id/active-mem")
-        val usedMem = r.get(s"$id/used-mem")
-        schedulingState.updateMemUsage(invoker.id, activeMem.toDouble, usedMem.toDouble)
-
-        val cpuLoad = r.get(s"$id/cpu-load")
-        schedulingState.updateCPUUsage(invoker.id, cpuLoad.toDouble)
+        schedulingState.updateCPUUsage(invoker.id, packet.cpuLoad, packet.running, packet.runningAndQ)
+        schedulingState.updateMemUsage(invoker.id, packet.containerActiveMem, packet.usedMem)
+        schedulingState.updateRuntimeData(packet.priorities)
       }
     } catch {
         case e: redis.clients.jedis.exceptions.JedisDataException => logging.error(this, s"Failed to log into redis server, $e")
@@ -255,13 +249,7 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
     activationId: ActivationId,
     loadStrategy: String)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
       logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
-      loadStrategy match {
-        case "simpleload" => state.getInvoker(fqn, activationId)
-        case _ => {
-          logging.error(this, s"Unsupported loadbalancing strat ${loadStrategy}")
-          None
-        }
-      }
+      state.getInvoker(fqn, activationId, loadStrategy)
   }
 }
 
@@ -291,6 +279,8 @@ case class ConsistentCacheLoadBalancerState(
   // private var startTimes: mutable.Map[ActivationId, Long] = mutable.Map.empty[ActivationId, Long],
   private var runTimes: mutable.Map[String, (Double, Double)] = mutable.Map.empty[String, (Double, Double)], // (warm, cold)
   private var cpuLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  private var runningLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  private var runningAndQLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
   private var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
@@ -300,8 +290,10 @@ case class ConsistentCacheLoadBalancerState(
   /** Getters for the variables, setting from the outside is only allowed through the update methods below */
   def invokers: IndexedSeq[InvokerHealth] = _invokers
 
-  def updateCPUUsage(invoker: InvokerInstanceId, load: Double) : Unit = {
+  def updateCPUUsage(invoker: InvokerInstanceId, load: Double, running: Double, runningAndQ: Double) : Unit = {
     cpuLoad += (invoker -> load)
+    runningLoad += (invoker -> running)
+    runningAndQLoad += (invoker -> runningAndQ)
   }
 
   def updateMemUsage(invoker: InvokerInstanceId, activeMem: Double, usedMem: Double) : Unit = {
@@ -309,7 +301,7 @@ case class ConsistentCacheLoadBalancerState(
   }
 
   def emitMetrics() : Unit = {
-    logging.info(this, s"Current system data= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad")
+    logging.info(this, s"Current system data= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad, running load: $runningLoad")
   }
 
   def updateRuntimeData(data: List[(String,Double,Double)]) : Unit = {
@@ -341,15 +333,45 @@ case class ConsistentCacheLoadBalancerState(
     return Some(node.invoker)
   }
 
-  def getInvoker(fqn: FullyQualifiedEntityName, activationId: ActivationId) : Option[InvokerInstanceId] = {
+  private def getLoad(node: ConsisntentCacheInvokerNode, loadStrategy: String) : Double = {
+    loadStrategy match {
+      case "simpleload" => node.load.doubleValue() / lbConfig.invoker.cores
+      case "running" => runningLoad.getOrElse(node.invoker, 0.0)
+      case "RandQ" => runningAndQLoad.getOrElse(node.invoker, 0.0)
+      case "cpu" => cpuLoad.getOrElse(node.invoker, 0.0)
+      case "usedmem" => memLoad.getOrElse(node.invoker, (0.0, 0.0))._1
+      case "activemem" => memLoad.getOrElse(node.invoker, (0.0, 0.0))._2
+      case _ => {
+        logging.error(this, s"getLoad: Unsupported loadbalancing strat ${loadStrategy}")
+        1.0
+      }
+    }
+  }
+
+  private def getLoadCutoff(loadStrategy: String) : Double = {
+    loadStrategy match {
+      case "simpleload" => 2.0 * lbConfig.invoker.c
+      case "running" => 2.0 * lbConfig.invoker.c
+      case "RandQ" => 2.0 * lbConfig.invoker.c
+      case "cpu" => lbConfig.invoker.c
+      case "usedmem" => lbConfig.invoker.c
+      case "activemem" => lbConfig.invoker.c
+      case _ => {
+        logging.error(this, s"getLoadCutoff: Unsupported loadbalancing strat ${loadStrategy}")
+        1.0
+      }
+    }
+  }
+
+  def getInvoker(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
     val strName = s"${fqn.namespace}/${fqn.name}"
     val possNode = _consistentHash.locate(strName)
     if (possNode.isPresent)
     {
       var original_node = possNode.get()
-      val orig_serverLoad = original_node.load.doubleValue() / lbConfig.invoker.cores
+      val orig_serverLoad = getLoad(original_node, loadStrategy)
       var node = original_node
-      val loadCuttoff = 2.0 * lbConfig.invoker.c
+      val loadCuttoff = getLoadCutoff(loadStrategy)
       if (orig_serverLoad <= loadCuttoff) {
         /* assign load to node */
         return updateTrackingData(original_node, activationId)
@@ -367,7 +389,7 @@ case class ConsistentCacheLoadBalancerState(
       for (i <- 0 to cutoff) {
         var id = (idx + i) % _invokers.length
         node = _consistentHashList(id)
-        val serverLoad = node.load.doubleValue() / lbConfig.invoker.cores
+        val serverLoad = getLoad(node, loadStrategy)
 
         if (serverLoad <= loadCuttoff) {
           logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
