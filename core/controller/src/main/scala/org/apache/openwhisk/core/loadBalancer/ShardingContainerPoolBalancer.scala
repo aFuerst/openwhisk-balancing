@@ -44,6 +44,11 @@ import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
+import pureconfig.module.enumeratum._
+// import com.typesafe.config.ConfigFactory.parseString
+import enumeratum._
+import enumeratum.EnumEntry._
+
 /**
  * A loadbalancer that schedules workload based on a hashing-algorithm.
  *
@@ -599,6 +604,32 @@ case class RedisLbConfig(password: String,
                          port: Int,
                          ip: String)
 
+sealed trait ConsistentCacheLoadBalanceStrategy extends EnumEntry with Snakecase
+
+object ConsistentCacheLoadBalanceStrategy extends Enum[ConsistentCacheLoadBalanceStrategy] {
+  val values = findValues
+  case object SimpleLoad extends ConsistentCacheLoadBalanceStrategy
+  case object Running extends ConsistentCacheLoadBalanceStrategy
+  case object RAndQ extends ConsistentCacheLoadBalanceStrategy
+  case object CPU extends ConsistentCacheLoadBalanceStrategy
+  case object UsedMem extends ConsistentCacheLoadBalanceStrategy
+  case object ActiveMem extends ConsistentCacheLoadBalanceStrategy
+  case object LoadAvg extends ConsistentCacheLoadBalanceStrategy
+}
+
+// object ConsistentCacheLoadBalanceStrategy extends Enumeration {
+//   val SimpleLoad, Running, RAndQ, CPU, UsedMem, ActiveMem, LoadAvg = Value
+// }
+
+sealed trait LoadBalanceAlgo extends EnumEntry with Snakecase
+
+object LoadBalanceAlgo extends Enum[LoadBalanceAlgo] {
+  val values = findValues
+  case object ConsistentCache extends LoadBalanceAlgo
+  case object BoundedLoad extends LoadBalanceAlgo
+}
+
+
 /**
  * Configuration for the sharding container pool balancer.
  *
@@ -612,7 +643,8 @@ case class ShardingContainerPoolBalancerConfig(invoker: InvokerLoadConfig,
                                                blackboxFraction: Double,
                                                timeoutFactor: Int,
                                                timeoutAddon: FiniteDuration,
-                                               loadStrategy: String)
+                                               loadStrategy: ConsistentCacheLoadBalanceStrategy,
+                                               algorithm: LoadBalanceAlgo)
 
 /**
  * State kept for each activation slot until completion.

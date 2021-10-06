@@ -42,6 +42,7 @@ import spray.json._
 // import java.lang.management.OperatingSystemMXBean
 import com.sun.management.OperatingSystemMXBean
 import java.lang.management.ManagementFactory
+import sys.process._
 
 case class ColdStartKey(kind: String, memory: ByteSize)
 
@@ -728,7 +729,10 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
       var running = containersInUse.size
       var runAndQ = running + runBuffer.size
       
-      var packet = new RedisPacket(data, containerActiveMem, usedMem, running, runAndQ, cpuLoad)
+      val uptimeResult = "uptime".!!
+      val loadAvg = uptimeResult.split(",")(2).split(":")(1).toDouble
+
+      var packet = new RedisPacket(data, containerActiveMem, usedMem, running, runAndQ, cpuLoad, loadAvg)
       val sendJson = packet.toJson.compactPrint
       redisClient.set(s"${instance.instance}/packet", sendJson)
 

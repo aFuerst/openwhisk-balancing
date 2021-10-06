@@ -37,13 +37,19 @@ net="mynet$VMID"
 rm -f $guestimg
 rm -f $debug
 
+CPUS=4
+if [ $VMID == 0 ]
+then
+CPUS=6
+fi
+
 qemu-img create -f qcow2 \
                 -o backing_file=$drive \
                 $guestimg
 
 qemu-system-x86_64 \
     -enable-kvm \
-    -smp cpus=6 -cpu host \
+    -smp cpus=$CPUS -cpu host \
     -m 24G \
     -daemonize \
     -nographic \

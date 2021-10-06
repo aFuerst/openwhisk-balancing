@@ -7,8 +7,9 @@ case class RedisPacket (
   usedMem: Double, 
   running: Double, 
   runningAndQ: Double, 
-  cpuLoad: Double)
+  cpuLoad: Double,
+  loadAvg: Double)
 
 object RedisPacketProtocol extends DefaultJsonProtocol {
-  implicit val redisPacketFormat = jsonFormat6(RedisPacket.apply)
+  implicit val redisPacketFormat = jsonFormat7(RedisPacket.apply)
 }
