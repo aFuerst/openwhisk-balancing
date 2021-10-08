@@ -593,7 +593,8 @@ case class ShardingContainerPoolBalancerState(
 case class ClusterConfig(useClusterBootstrap: Boolean)
 
 case class InvokerLoadConfig(cores: Int,
-                              c: Double) 
+                              c: Double,
+                              boundedCeil: Double) 
 
 case class RedisLbConfig(password: String,
                          port: Int,

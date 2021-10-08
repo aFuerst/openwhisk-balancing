@@ -265,6 +265,8 @@
         "{{ controller.invoker.c }}"
       "CONFIG_whisk_loadbalancer_invoker_cores":
         "{{ controller.invoker.cores }}"
+      "CONFIG_whisk_loadbalancer_invoker_boundedCeil":
+        "{{ controller.invoker.boundedCeil }}"
       "CONFIG_whisk_loadbalancer_redis_password":
         "{{ controller.redis.password }}"
       "CONFIG_whisk_loadbalancer_redis_port":

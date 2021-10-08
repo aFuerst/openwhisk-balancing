@@ -53,10 +53,10 @@ ansible-playbook -i environments/$ENVIRONMENT initdb.yml
 ansible-playbook -i environments/$ENVIRONMENT wipe.yml
 
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean -e OPENWHISK_TMP_DIR=$whisk_logs_dir
-ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="15G" -e controller_loadbalancer_invoker_cores=5 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy="simple_load" -e controller_algorithm="consistent_cache" -e OPENWHISK_TMP_DIR=$whisk_logs_dir
-
 # for redis
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e redis_port=$redisPort -e redis_pass=$redisPass
+ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="15G" -e controller_loadbalancer_invoker_cores=6 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy="SimpleLoad" -e controller_algorithm="ConsistentCache" -e OPENWHISK_TMP_DIR=$whisk_logs_dir -e controller_loadbalancer_invoker_boundedceil=1.2
+
 ```
 
 ## Run simple OW thing

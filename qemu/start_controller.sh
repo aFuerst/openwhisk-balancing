@@ -17,6 +17,6 @@ qemu-system-x86_64 \
     -display none \
     -netdev bridge,id=mynet0,br=br0 \
     -device virtio-net-pci,netdev=mynet0,mac=06:01:02:03:04:00 \
-    -monitor telnet:127.0.0.1:45682,server,nowait \
+    -monitor telnet:127.0.0.1:45680,server,nowait \
     -drive file="$drive",if=virtio,aio=threads,format=raw \
     -debugcon file:debug.log -global isa-debugcon.iobase=0x402

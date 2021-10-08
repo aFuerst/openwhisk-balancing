@@ -193,15 +193,25 @@ class ConsistentCacheLoadBalancer(
       for (invoker <- schedulingState.invokers)
       {
         val id = invoker.id.instance
-        val packet = r.get(s"$id/packet").parseJson.convertTo[RedisPacket]
+        val packetStr = Option(r.get(s"$id/packet"))
+        
+        packetStr match {
+          case Some(realStr) => {
+            val packet = realStr.parseJson.convertTo[RedisPacket]
 
-        schedulingState.updateCPUUsage(invoker.id, packet.cpuLoad, packet.running, packet.runningAndQ, packet.loadAvg)
-        schedulingState.updateMemUsage(invoker.id, packet.containerActiveMem, packet.usedMem)
-        schedulingState.updateRuntimeData(packet.priorities)
+            schedulingState.updateCPUUsage(invoker.id, packet.cpuLoad, packet.running, packet.runningAndQ, packet.loadAvg)
+            schedulingState.updateMemUsage(invoker.id, packet.containerActiveMem, packet.usedMem)
+            schedulingState.updateRuntimeData(packet.priorities)
+          }
+          case None =>  logging.warn(this, s"Could not get redis packet for invoker $id")
+        }
       }
     } catch {
-        case e: redis.clients.jedis.exceptions.JedisDataException => logging.error(this, s"Failed to log into redis server, $e")
-        case scala.util.control.NonFatal(t) => logging.error(this, s"Unkonwn error, $t")
+        case e: redis.clients.jedis.exceptions.JedisDataException => logging.warn(this, s"Failed to log into redis server, $e")
+        case scala.util.control.NonFatal(t) => {
+          var trace = t.getStackTrace.map { trace => trace.toString() }.mkString("\n")
+          logging.error(this, s"Unknonwn error, '$t', at ${trace}")
+        } 
     }
     schedulingState.emitMetrics()
   }  
@@ -258,11 +268,11 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
         case "ConsistentCache" => state.getInvokerConsistentCache(fqn, activationId, loadStrategy)
         case "BoundedLoad" => state.getInvokerBoundedLoad(fqn, activationId, loadStrategy)
         case _ => {
-        logging.error(this, s"schedule: Unsupported loadbalancing algorithm ${algo}")
-        None
-      }
-    }  
-  }
+          logging.error(this, s"schedule: Unsupported loadbalancing algorithm ${algo}")
+          None
+        }
+      }  
+    }
 }
 
 class ConsisntentCacheInvokerNode(_invoker: InvokerInstanceId, _load: Option[AtomicInteger])(implicit logging: Logging)
@@ -315,7 +325,7 @@ case class ConsistentCacheLoadBalancerState(
   }
 
   def emitMetrics() : Unit = {
-    logging.info(this, s"Current system data= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad, running load: $runningLoad")
+    logging.info(this, s"Current system data= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad, running load: $runningLoad, minute Load Avg: $minuteLoadAvg")
   }
 
   def updateRuntimeData(data: List[(String,Double,Double)]) : Unit = {
@@ -355,26 +365,26 @@ case class ConsistentCacheLoadBalancerState(
       case "CPU" => cpuLoad.getOrElse(node.invoker, 0.0)
       case "UsedMem" => memLoad.getOrElse(node.invoker, (0.0, 0.0))._1
       case "ActiveMem" => memLoad.getOrElse(node.invoker, (0.0, 0.0))._2
-      case "LoadAvg" => minuteLoadAvg.getOrElse(node.invoker, 0.0)
+      case "LoadAvg" => minuteLoadAvg.getOrElse(node.invoker, 0.0)  / lbConfig.invoker.cores
       case _ => {
         logging.error(this, s"getLoad: Unsupported loadbalancing strat ${loadStrategy}")
-        1.0
+        2.0
       }
     }
   }
 
   private def getLoadCutoff(loadStrategy: String) : Double = {
     loadStrategy match {
-      case "SimpleLoad" => 2.0 * lbConfig.invoker.c
-      case "Running" => 2.0 * lbConfig.invoker.c
-      case "RAndQ" => 2.0 * lbConfig.invoker.c
+      case "SimpleLoad" => lbConfig.invoker.boundedCeil * lbConfig.invoker.c
+      case "Running" => lbConfig.invoker.boundedCeil * lbConfig.invoker.c
+      case "RAndQ" => lbConfig.invoker.boundedCeil * lbConfig.invoker.c
       case "CPU" => lbConfig.invoker.c
       case "UsedMem" => lbConfig.invoker.c
       case "ActiveMem" => lbConfig.invoker.c
-      case "LoadAvg" => 2.0 * lbConfig.invoker.c
+      case "LoadAvg" => lbConfig.invoker.boundedCeil * lbConfig.invoker.c
       case _ => {
         logging.error(this, s"getLoadCutoff: Unsupported loadbalancing strat ${loadStrategy}")
-        1.0
+        2.0
       }
     }
   }
@@ -416,32 +426,28 @@ def getInvokerBoundedLoad(fqn: FullyQualifiedEntityName, activationId: Activatio
       val orig_serverLoad = getLoad(original_node, loadStrategy)
       var node = original_node
       val loadCuttoff = getLoadCutoff(loadStrategy)
-      if (orig_serverLoad <= loadCuttoff) {
-        /* assign load to node */
-        return updateTrackingData(original_node, activationId)
-      }
 
       val idx = _consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
-      val cutoff = min(_invokers.length, loadCuttoff).toInt
+      val chainLen = _invokers.length // min(_invokers.length, loadCuttoff).toInt
       var times = runTimes.getOrElse(strName, (0.0, 0.0))
-      var r: Double = 1
+      var r: Double = 2.2
       if (times._1 != 0.0) {
         r = times._2 / times._1
-        r = min(r, 5.0)
+        r = min(r, 2.2)
       }
 
-      for (i <- 0 to cutoff) {
+      for (i <- 0 to chainLen) {
         var id = (idx + i) % _invokers.length
         node = _consistentHashList(id)
         val serverLoad = getLoad(node, loadStrategy)
 
         if (serverLoad <= loadCuttoff) {
-          logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
+          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
           /* assign load to node */
           return updateTrackingData(node, activationId)
         }
         else if (serverLoad <= r-1) {
-          logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
+          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
           return updateTrackingData(node, activationId)
         }
       }

@@ -653,7 +653,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
           priorities += (action -> priority_data)
         }
       }
-      case other => logging.error(this, s"unkonwn action to remove possAction:${possAction}: toDelete:${toDelete}")
+      case other => logging.error(this, s"unknonwn action to remove possAction:${possAction}: toDelete:${toDelete}")
     }
     logging.info(this, s"removing container $toDelete")
     actorRunning -= toDelete._1
@@ -730,16 +730,25 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
       var runAndQ = running + runBuffer.size
       
       val uptimeResult = "uptime".!!
-      val loadAvg = uptimeResult.split(",")(2).split(":")(1).toDouble
+      val findStr = "load average:"
+      val subStart = uptimeResult.indexOf("load average:")
+      val justLoads = uptimeResult.substring(subStart+ findStr.size)
+      val firstComma = justLoads.indexOf(",")
+      val loadAvg = justLoads.substring(0,firstComma).toDouble
+
+      // val loadAvg = uptimeResult.split(",")(3).split(":")(1).toDouble
 
       var packet = new RedisPacket(data, containerActiveMem, usedMem, running, runAndQ, cpuLoad, loadAvg)
       val sendJson = packet.toJson.compactPrint
       redisClient.set(s"${instance.instance}/packet", sendJson)
 
-      logging.info(this, s"Updated data in Redis data: $data, containerActiveMem: $containerActiveMem, usedMem: $usedMem")
+      logging.info(this, s"Updated data in Redis data: $sendJson")
     } catch {
-        case e: redis.clients.jedis.exceptions.JedisDataException => logging.info(this, s"Failed to log into redis server, $e")
-        case scala.util.control.NonFatal(t) => logging.error(this, s"Unkonwn error, $t")
+        case e: redis.clients.jedis.exceptions.JedisDataException => logging.warn(this, s"Failed to log into redis server, $e")
+        case scala.util.control.NonFatal(t) => {
+          var trace = t.getStackTrace.map { trace => trace.toString() }.mkString("\n")
+          logging.error(this, s"Unknonwn error, '$t', at ${trace}")
+        } 
     }
   }
 }

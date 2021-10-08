@@ -97,6 +97,7 @@ controller:
   invoker:
     cores: "{{ controller_loadbalancer_invoker_cores | default(4) }}"
     c: "{{ controller_loadbalancer_invoker_c | default(1) }}"
+    boundedCeil: "{{ controller_loadbalancer_invoker_boundedceil | default(1) }}"
   redis:
     password: "{{ controller_loadbalancer_redis_password | default('openwhisk') }}"
     port: "{{ controller_loadbalancer_redis_port | default(6379) }}"
