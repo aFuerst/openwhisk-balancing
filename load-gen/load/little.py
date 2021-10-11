@@ -19,7 +19,12 @@ def _toWeightedData(action_dict):
   return acts, freqs
 
 
-def ColdLoadTrace(action_dict):
+def ColdLoadTrace(action_dict, numcpus=4, len_mins=10):
+  num_servers = 3
+  cpus_per_server = numcpus
+  items_in_sys = num_servers * cpus_per_server
+  trace_len_sec = 60*len_mins
+
   avg_queuetime = sum(wsk_interact.cold_times) / len(wsk_interact.cold_times)
   items_per_sec = items_in_sys / avg_queuetime
   item_IAT = 1 / items_per_sec

@@ -118,7 +118,7 @@ def invoke_web_action_async(url, threadpool, auth, host):
         print("got invalid json", r.status_code, ret_json)
         was_cold = None
     except Exception as e:
-      print("Got exception '{}' when trying to invoke action '{}', result: '{}' - '{}'".format(e, action_url, r.response_code, r.content))
+      print("Got exception '{}' when trying to invoke action '{}', result: '{}' - '{}'".format(e, action_url, r.status_code, r.content))
       raise e
       return None, 0, "{ }"
 

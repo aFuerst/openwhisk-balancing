@@ -21,3 +21,4 @@ venv/
 code/sim/prof/
 code/sim/run_logs/
 code/traces/test
+run-scripts/logs/
