@@ -393,11 +393,9 @@ case class ConsistentCacheLoadBalancerState(
   }
 
   def roundRobin() : Option[InvokerInstanceId] = {
-    if (robinInt > _invokers.length) {
-      robinInt = 0;
-    }
     val ret = _invokers(robinInt)
     robinInt += 1
+    robinInt %= _invokers.length;
     return Some(ret.id)
   }
 
