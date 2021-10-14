@@ -267,6 +267,8 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
       algo match {
         case "ConsistentCache" => state.getInvokerConsistentCache(fqn, activationId, loadStrategy)
         case "BoundedLoad" => state.getInvokerBoundedLoad(fqn, activationId, loadStrategy)
+        case "ConsistentHash" => state.getInvokerConsistentHash(fqn, activationId, loadStrategy)
+        case "RoundRobin" => state.roundRobin()
         case _ => {
           logging.error(this, s"schedule: Unsupported loadbalancing algorithm ${algo}")
           None
@@ -305,6 +307,7 @@ case class ConsistentCacheLoadBalancerState(
   private var runningAndQLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
   private var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
   private var minuteLoadAvg: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  private var robinInt: Int = 0,
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -389,7 +392,26 @@ case class ConsistentCacheLoadBalancerState(
     }
   }
 
-def getInvokerBoundedLoad(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
+  def roundRobin() : Option[InvokerInstanceId] = {
+    if (robinInt > _invokers.length) {
+      robinInt = 0;
+    }
+    val ret = _invokers(robinInt)
+    robinInt += 1
+    return Some(ret.id)
+  }
+
+  def getInvokerConsistentHash(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
+    val strName = s"${fqn.namespace}/${fqn.name}"
+    val possNode = _consistentHash.locate(strName)
+    if (possNode.isPresent)
+    {
+      Some(possNode.get().invoker)
+    }
+    else None
+  }
+
+  def getInvokerBoundedLoad(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
     val strName = s"${fqn.namespace}/${fqn.name}"
     val possNode = _consistentHash.locate(strName)
     if (possNode.isPresent)
