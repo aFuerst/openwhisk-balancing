@@ -61,7 +61,7 @@ def main(args):
         download_path = tmp+'{}{}'.format(uuid.uuid4(), object_key)
 
         # s3_client.download_file(input_bucket, object_key, download_path)
-        src = "https://github.com/kmu-bigdata/serverless-faas-workbench/raw/master/dataset/video/SampleVideo_1280x720_10mb.mp4"
+        src = "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"
         urllib.request.urlretrieve(src, download_path)
 
         latency, upload_path = video_processing(object_key, download_path)

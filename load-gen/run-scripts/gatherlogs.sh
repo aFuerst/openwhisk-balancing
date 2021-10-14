@@ -1,10 +1,14 @@
 
 # VMs at IPs 172.29.200.161 & 172.29.200.166-8
 
+DEST=$1
+
 user='ow'
 pw='OwUser'
 
-sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/controller0/controller0_logs.log" ./systemlogs
+sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/controller0/controller0_logs.log" $DEST
+sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/nginx_access.log" $DEST
+
 
 for VMID in 6 7 8
 do
@@ -24,6 +28,6 @@ pth="/home/ow/openwhisk-logs/wsklogs/"
 pth+="$name/"
 pth+="$name"
 pth+="_logs.log"
-sshpass -p $pw scp "$user@172.29.200.16$VMID:$pth" ./systemlogs
+sshpass -p $pw scp "$user@172.29.200.16$VMID:$pth" $DEST
 
 done

@@ -37,7 +37,7 @@ net="mynet$VMID"
 rm -f $guestimg
 rm -f $debug
 
-CPUS=6
+CPUS=8
 if [ $VMID == 0 ]
 then
 CPUS=6

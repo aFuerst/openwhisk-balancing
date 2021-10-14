@@ -17,22 +17,36 @@ CPUS=4
 GBS=8
 GBstr="$GBS"
 GBstr+="G"
+STRAT="SimpleLoad"
+MINS=10
 
-ALGO="ConsistentCache"
-PTH="logs/$CPUS-$GBS-$ALGO.csv"
+#  "ConsistentHash"
+for ALGO in "ConsistentCache" "BoundedLoad"
+do
+dir="logs/$CPUS-$GBS-$ALGO-$STRAT"
+PTH="$dir/$CPUS-$GBS-$ALGO-$STRAT.csv"
 echo $PTH
-./oneexp.sh --memory $GBstr --loadstrat "LoadAvg" --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS &> "logs/$CPUS-$GBS-$ALGO.log"
+mkdir -p $dir
+./oneexp.sh --memory $GBstr --loadstrat $STRAT --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS &> "$dir/$CPUS-$GBS-$ALGO.log"
+./gatherlogs.sh $dir
+done
 
-
-ALGO="BoundedLoad"
-PTH="logs/$CPUS-$GBS-$ALGO.csv"
+MINS=20
+for ALGO in "ConsistentCache" "BoundedLoad" "ConsistentHash"
+do
+dir="logs/$MINS-mins-$CPUS-$GBS-$ALGO-$STRAT"
+PTH="$dir/$CPUS-$GBS-$ALGO-$STRAT.csv"
 echo $PTH
-./oneexp.sh --memory $GBstr --loadstrat "LoadAvg" --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS &> "logs/$CPUS-$GBS-$ALGO.log"
-
+mkdir -p $dir
+./oneexp.sh --memory $GBstr --loadstrat $STRAT --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS &> "$dir/$CPUS-$GBS-$ALGO.log"
+./gatherlogs.sh $dir
+done
 
 IMAGE="whisk"
 ALGO="MemoryShard"
-PTH="logs/$CPUS-$GBS-$ALGO.csv"
+dir="logs/$MINS-mins-$CPUS-$GBS-$ALGO"
+PTH="$dir/$CPUS-$GBS-$ALGO.csv"
 echo $PTH
-./oneexp.sh --memory $GBstr --loadstrat "LoadAvg" --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS &> "logs/$CPUS-$GBS-$ALGO.log"
-
+mkdir -p $dir
+./oneexp.sh --memory $GBstr --loadstrat "LoadAvg" --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS &> "$dir/$CPUS-$GBS-$ALGO.log"
+./gatherlogs.sh $dir

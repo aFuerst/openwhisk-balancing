@@ -11,8 +11,8 @@ import argparse
 parser = argparse.ArgumentParser(description='Run FaasCache Simulation')
 parser.add_argument("--savepth", type=str, default="/path/to/place/out.csv", required=True)
 parser.add_argument("--host", type=str, default="https://172.29.200.161", required=False)
-parser.add_argument("--auth", type=str, default="2c3156ce-3e22-4d62-95d6-4c1ea6ae1be0:FmUbQWIALljjYOqDSlTQ3tpdtxWiw58IsOY9jHSvFp0dqIzFDRYQHd0koRVJ7mjm", required=False)
-parser.add_argument("--numcpus", type=int, default=4, required=False)
+parser.add_argument("--auth", type=str, default="3012593d-2f77-4991-8413-17fb04f74f9d:haEBFhaLcFregYZMfNcein4YxBGvg85VCF4pSgKqCGoCpHzCna0s6ZbPoXhLa0t4", required=False)
+parser.add_argument("--numcpus", type=float, default=4, required=False)
 parser.add_argument("--lenmins", type=int, default=10, required=False)
 args = parser.parse_args()
 
@@ -33,8 +33,10 @@ action_dict = {}
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
   if action_name == "video":
     continue
+  if cold_time > 5:
+    continue
   path = os.path.join("../ow-actions", zip_file)
-  for freq in [10, 40, 75, 100]:
+  for freq in [40, 75, 100, 150]:
     name = action_name + "_" + str(freq)
     url = add_web_action(name, path, container, memory=memory, host=host)
     action_dict[name] = Action(name, url, warm_time, cold_time, freq)
@@ -67,8 +69,8 @@ none_results = defaultdict(int)
 
 data = []
 for action, future in futures:
-  was_cold, latency, ret_json = future.result()
-  data.append( (action.name, was_cold, latency) )
+  was_cold, latency, ret_json, activation_id = future.result()
+  data.append( (action.name, was_cold, latency, activation_id) )
   print(action.name, was_cold, latency)
   if was_cold is None:
     none_results[action.name] += 1
@@ -81,5 +83,5 @@ print("warm results, total=", sum(warm_results.values()), warm_results)
 print("cold results, total=", sum(cold_results.values()), cold_results)
 print("none results, total=", sum(none_results.values()), none_results)
 
-df = pd.DataFrame.from_records(data, columns=["invokname", "was_cold", "latency"])
+df = pd.DataFrame.from_records(data, columns=["invokname", "was_cold", "latency", "activationid"])
 df.to_csv(args.savepth)
