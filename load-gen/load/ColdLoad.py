@@ -10,7 +10,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Run FaasCache Simulation')
 parser.add_argument("--savepth", type=str, default="/path/to/place/out.csv", required=True)
-parser.add_argument("--host", type=str, default="https://172.29.200.161", required=False)
+parser.add_argument("--host", type=str, default="https://172.29.200.161:10001", required=False)
 parser.add_argument("--auth", type=str, default="3012593d-2f77-4991-8413-17fb04f74f9d:haEBFhaLcFregYZMfNcein4YxBGvg85VCF4pSgKqCGoCpHzCna0s6ZbPoXhLa0t4", required=False)
 parser.add_argument("--numcpus", type=float, default=4, required=False)
 parser.add_argument("--lenmins", type=int, default=10, required=False)
@@ -31,10 +31,10 @@ class Action:
 action_dict = {}
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
-  if action_name == "video":
-    continue
-  if cold_time > 5:
-    continue
+  # if action_name == "video":
+  #   continue
+  # if cold_time > 5:
+  #   continue
   path = os.path.join("../ow-actions", zip_file)
   for freq in [40, 75, 100, 150]:
     name = action_name + "_" + str(freq)

@@ -9,12 +9,12 @@
   </appender>
 
   <!-- Apache HttpClient -->
-  <logger name="org.apache.http" level="ERROR" />
+  <logger name="org.apache.http" level="INFO" />
 
   <!-- Kafka -->
-  <logger name="org.apache.kafka" level="ERROR" />
+  <logger name="org.apache.kafka" level="INFO" />
 
-  <root level="${logback.log.level:-INFO}">
+  <root level="${logback.log.level:-DEBUG}">
     <appender-ref ref="console" />
   </root>
 </configuration>

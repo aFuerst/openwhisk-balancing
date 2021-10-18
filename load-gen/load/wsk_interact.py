@@ -45,16 +45,18 @@ def add_web_action(name:str, path:str, container:str="python:3", memory:int=256,
       print(wsk.stderr.decode())
     wsk.check_returncode()
 
-    args = ["wsk", "-i", "action", "get", url, "--url"]
-    wsk = subprocess.run(args=args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # args = ["wsk", "-i", "action", "get", url, "--url"]
+    # wsk = subprocess.run(args=args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    if wsk.returncode != 0:
-      print(wsk.stdout.decode())
-      print(wsk.stderr.decode())
-    wsk.check_returncode()
+    # if wsk.returncode != 0:
+    #   print(wsk.stdout.decode())
+    #   print(wsk.stderr.decode())
+    # wsk.check_returncode()
 
-    url = wsk.stdout.decode()
-    url = url.split("\n")[1]
+    # url = wsk.stdout.decode()
+    # url = url.split("\n")[1]
+    url = "{}/api/v1/web/afuerst/default/{}".format(host, name)
+
     if not silent:
       print(url)
     # print("{}/api/v1/web{}".format(host, url))
@@ -90,19 +92,19 @@ def invoke_web_action_async(url, threadpool, auth, host):
       else:
         activation_id="ERROR"
       if r.status_code == 502:
-        return None, 0, "{ }", str(r.status_code)
+        return "BAD_GATEWAY", 0, "{ }", str(r.status_code)
       if r.status_code == 202:
         # invocation timed out, poll for result
         # https://172.29.200.161/api/v1/namespaces/_/activations/7f6564cf8c5f494da564cf8c5fd94d3f
         resp_json = r.json()
         # print("202 JSON:", resp_json)
-        poll_url = "https://172.29.200.161/api/v1/namespaces/_/activations/{}".format(activation_id)
+        poll_url = "{}/api/v1/namespaces/_/activations/{}".format(host, activation_id)
         u,p = auth.split(":")
         i = 0
         r = requests.get(poll_url, verify=False, auth=(u,p))
         while r.status_code != 200 and i < max_wait:
           if r.status_code == 502:
-            return None, 0, "{ }", str(r.status_code)
+            return "BAD_GATEWAY", 0, "{ }", str(r.status_code)
           # if new_r.status_code == 404:
           #   print("Got 404 trying to look for activation ID {} from request JSON {} and headers {}".format(activation_id, resp_json, r.headers))
           #   return None, 0, "{ }", ""
@@ -112,7 +114,7 @@ def invoke_web_action_async(url, threadpool, auth, host):
         latency = time() - start
         if i == max_wait:
           print("Activation with ID {} failed to finish reasonbly. {}".format(activation_id, resp_json))
-          return None, 0, "{ }", str(r.status_code)
+          return "TIMEOUT", 0, "{ }", str(r.status_code)
         # print("second route headers: {} json: {}\n".format(new_r.headers, new_r.json()))
         ret_json = r.json()
         if "response" in ret_json and "result" in ret_json["response"] and "body" in ret_json["response"]["result"]:
@@ -123,11 +125,10 @@ def invoke_web_action_async(url, threadpool, auth, host):
         was_cold = ret_json["cold"]
       else:
         print("got invalid json", r.status_code, ret_json)
-        was_cold = None
+        was_cold = "BAD_JSON"
     except Exception as e:
       print("Got exception '{}' when trying to invoke action '{}', result: '{}' - '{}'".format(e, action_url, r.status_code, r.content))
       raise e
-      return None, 0, "{ }", "UNKNOWN"
 
     return was_cold, latency, ret_json, activation_id
 

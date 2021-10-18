@@ -17,14 +17,14 @@ ALGO="ConsistentCache"
 STRAT="SimpleLoad"
 MINS=10
 
-export HOST=https://172.29.200.161
+export HOST=https://172.29.200.161:10001
 export AUTH=3012593d-2f77-4991-8413-17fb04f74f9d:haEBFhaLcFregYZMfNcein4YxBGvg85VCF4pSgKqCGoCpHzCna0s6ZbPoXhLa0t4
 
-for GBS in 10 12
+for GBS in 16 18
 do
   # for USERS in 80 100 150 200
   # do
-  for CPUS in 4 5 6 7
+  for CPUS in 5.5 6 6.5 7 8
   do
 
   GBstr="$GBS"
