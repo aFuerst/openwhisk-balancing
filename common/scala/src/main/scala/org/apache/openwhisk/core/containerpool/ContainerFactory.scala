@@ -50,6 +50,7 @@ case class RedisPoolConfig(password: String,
 
 case class ContainerPoolConfig(userMemory: ByteSize,
                                redis: RedisPoolConfig,
+                               evictionStrategy: String,
                                concurrentPeekFactor: Double,
                                akkaClient: Boolean,
                                prewarmExpirationCheckInitDelay: FiniteDuration,

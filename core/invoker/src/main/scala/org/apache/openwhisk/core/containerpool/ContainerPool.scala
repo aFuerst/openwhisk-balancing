@@ -115,7 +115,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
   val logMessageInterval = 10.seconds
   //periodically emit metrics (don't need to do this for each message!)
   context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, EmitMetrics)
-  context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, UpdateControllerRuntimes)
+  context.system.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds, self, UpdateControllerRuntimes)
   val osBean: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean().asInstanceOf[OperatingSystemMXBean]
 
   // Key is ColdStartKey, value is the number of cold Start in minute
@@ -263,21 +263,39 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
                   })
               .orElse(
                 // Remove a container and create a new one for the given job
-                ContainerPool
-                // Only free up the amount, that is really needed to free up
-                  .remove2Boogaloo(sortOnPriorities(freePool), Math.min(r.action.limits.memory.megabytes, memoryConsumptionOf(freePool)).MB)
-                  .map(removeContainer2Boogaloo)
-                  // If the list had at least one entry, enough containers were removed to start the new container. After
-                  // removing the containers, we are not interested anymore in the containers that have been removed.
-                  .headOption
-                  .map(_ =>
-                    takePrewarmContainer(r.action)
-                      .map(container => (container, "recreatedPrewarm"))
-                      .getOrElse {
-                        val container = (createContainer(memory), "recreated")
-                        incrementColdStartCount(kind, memory)
-                        container
-                      }))
+                if (poolConfig.evictionStrategy == "GD") {
+                  ContainerPool
+                    // Only free up the amount, that is really needed to free up
+                      .remove2Boogaloo(sortOnPriorities(freePool), Math.min(r.action.limits.memory.megabytes, memoryConsumptionOf(freePool)).MB)
+                      .map(removeContainer2Boogaloo)
+                      // If the list had at least one entry, enough containers were removed to start the new container. After
+                      // removing the containers, we are not interested anymore in the containers that have been removed.
+                      .headOption
+                      .map(_ =>
+                        takePrewarmContainer(r.action)
+                          .map(container => (container, "recreatedPrewarm"))
+                          .getOrElse {
+                            val container = (createContainer(memory), "recreated")
+                            incrementColdStartCount(kind, memory)
+                            container
+                          })
+                } else {
+                  ContainerPool
+                  // Only free up the amount, that is really needed to free up
+                    .remove(freePool, Math.min(r.action.limits.memory.megabytes, memoryConsumptionOf(freePool)).MB)
+                    .map(removeContainer)
+                    // If the list had at least one entry, enough containers were removed to start the new container. After
+                    // removing the containers, we are not interested anymore in the containers that have been removed.
+                    .headOption
+                    .map(_ =>
+                      takePrewarmContainer(r.action)
+                        .map(container => (container, "recreatedPrewarm"))
+                        .getOrElse {
+                          val container = (createContainer(memory), "recreated")
+                          incrementColdStartCount(kind, memory)
+                          container
+                        })
+                })
 
         createdContainer match {
           case Some(((actor, data), containerState)) =>

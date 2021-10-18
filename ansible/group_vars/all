@@ -94,6 +94,8 @@ controller:
   timeoutFactor: "{{ controller_timeout_factor | default(2) }}"
   timeoutAddon: "{{ controller_timeout_addon | default('1 m') }}"
   instances: "{{ groups['controllers'] | length }}"
+  activationStrategy:
+    default: "{{ controller_activation_strategy_default | default('org.apache.openwhisk.core.loadBalancer.LeanBalancer') }}"
   invoker:
     cores: "{{ controller_loadbalancer_invoker_cores | default(4) }}"
     c: "{{ controller_loadbalancer_invoker_c | default(1) }}"
@@ -210,6 +212,7 @@ invoker:
     password: "{{ invoker_redis_password | default('openwhisk') }}"
     port: "{{ invoker_redis_port | default(6379) }}"
     ip: "{{ groups['redis'] | first }}"
+  evictionStrategy: "{{ invoker_eviction_strategy | default('GD') }}"
   # Specify if it is allowed to deploy more than 1 invoker on a single machine.
   allowMultipleInstances: "{{ invoker_allow_multiple_instances | default(false) }}"
   # Specify if it should use docker-runc or docker to pause/unpause containers
