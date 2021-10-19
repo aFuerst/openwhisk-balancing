@@ -72,8 +72,8 @@ object MuxBalancer extends LoadBalancerProvider {
 
     new MuxBalancer(whiskConfig, instance, createFeedFactory(whiskConfig, instance))
   }
-
-  def requiredProperties =
-    ExecManifest.requiredProperties ++
-      wskApiHost
+  def requiredProperties: Map[String, String] = kafkaHosts
+  // def requiredProperties =
+  //   ExecManifest.requiredProperties ++
+  //     wskApiHost
 }
