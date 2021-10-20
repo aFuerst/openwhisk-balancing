@@ -72,16 +72,16 @@ for action, future in futures:
   was_cold, latency, ret_json, activation_id = future.result()
   data.append( (action.name, was_cold, latency, activation_id) )
   print(action.name, was_cold, latency)
-  if was_cold is None:
-    none_results[action.name] += 1
-  elif was_cold:
+  if was_cold == True:
     cold_results[action.name] += 1
-  else:
+  elif was_cold == False:
     warm_results[action.name] += 1
+  else:
+    none_results[action.name] += 1
 
 print("warm results, total=", sum(warm_results.values()), warm_results)
 print("cold results, total=", sum(cold_results.values()), cold_results)
 print("none results, total=", sum(none_results.values()), none_results)
 
-df = pd.DataFrame.from_records(data, columns=["invokname", "was_cold", "latency", "activationid"])
-df.to_csv(args.savepth)
+df = pd.DataFrame.from_records(data, columns=["lambda", "was_cold", "latency", "activationid"])
+df.to_csv(args.savepth, index=False)

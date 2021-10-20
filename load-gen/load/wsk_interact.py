@@ -14,7 +14,7 @@ containers = ["python:ai-vid", "python:ai", "python:ai-vid", "python:ai", "pytho
 mem = [128, 512, 256, 256, 128, 128, 256, 256, 256, 128, 384, 128]
 warm_times = [0.055, 1.939, 1.184, 0.044, 0.352, 0.034, 6.365, 0.049, 8.357, 0.633, 31.036, 0.279]
 cold_times = [2.740, 7.725, 2.824, 2.896, 2.715, 2.251, 9.468, 2.868, 11.934, 3.000, 35.300, 2.502]
-max_wait = 5*60
+max_wait = 10*60
 
 
 def set_properties(host=None, auth=None):
