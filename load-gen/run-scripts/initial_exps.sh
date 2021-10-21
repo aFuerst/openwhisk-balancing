@@ -31,26 +31,26 @@ mkdir -p $dir
 ./oneexp.sh --memory $GBstr --loadstrat "LoadAvg" --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS --evict $EVICTION --balancer $BALANCER &> "$dir/$CPUS-$GBS-$ALGO.log"
 ./gatherlogs.sh $dir
 
-CPUS=5
-STRAT="SimpleLoad"
-BALANCER="ConsistentCacheLoadBalancer"
-MINS=20
-for ALGO in "ConsistentCache" "BoundedLoad" "ConsistentHash" "RoundRobin"
-do
-dir="logs/compare-algos/$MINS-mins-$CPUS-$GBS-$ALGO-$STRAT"
-PTH="$dir/latencies.csv"
-echo $PTH
-mkdir -p $dir
-./oneexp.sh --memory $GBstr --loadstrat $STRAT --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS --evict $EVICTION --balancer $BALANCER &> "$dir/$CPUS-$GBS-$ALGO.log"
-./gatherlogs.sh $dir
-done
+# CPUS=5
+# STRAT="SimpleLoad"
+# BALANCER="ConsistentCacheLoadBalancer"
+# MINS=20
+# for ALGO in "ConsistentCache" "BoundedLoad" "ConsistentHash" "RoundRobin"
+# do
+# dir="logs/compare-algos/$MINS-mins-$CPUS-$GBS-$ALGO-$STRAT"
+# PTH="$dir/latencies.csv"
+# echo $PTH
+# mkdir -p $dir
+# ./oneexp.sh --memory $GBstr --loadstrat $STRAT --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS --evict $EVICTION --balancer $BALANCER &> "$dir/$CPUS-$GBS-$ALGO.log"
+# ./gatherlogs.sh $dir
+# done
 
-IMAGE="whisk"
-ALGO="MemoryShard"
-BALANCER="ShardingContainerPoolBalancer"
-dir="logs/compare-algos/$MINS-mins-$CPUS-$GBS-$ALGO"
-PTH="$dir/latencies.csv"
-echo $PTH
-mkdir -p $dir
-./oneexp.sh --memory $GBstr --loadstrat "LoadAvg" --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS --evict $EVICTION --balancer $BALANCER &> "$dir/$CPUS-$GBS-$ALGO.log"
-./gatherlogs.sh $dir
+# IMAGE="whisk"
+# ALGO="MemoryShard"
+# BALANCER="ShardingContainerPoolBalancer"
+# dir="logs/compare-algos/$MINS-mins-$CPUS-$GBS-$ALGO"
+# PTH="$dir/latencies.csv"
+# echo $PTH
+# mkdir -p $dir
+# ./oneexp.sh --memory $GBstr --loadstrat "LoadAvg" --algorithm $ALGO --image $IMAGE --output $PTH --cpus $CPUS --lenmins $MINS --evict $EVICTION --balancer $BALANCER &> "$dir/$CPUS-$GBS-$ALGO.log"
+# ./gatherlogs.sh $dir

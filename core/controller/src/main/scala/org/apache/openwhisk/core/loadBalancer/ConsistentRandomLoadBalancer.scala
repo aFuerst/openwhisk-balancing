@@ -49,7 +49,7 @@ import org.ishugaliy.allgood.consistent.hash.node.{Node}
 import redis.clients.jedis.{Jedis}
 import spray.json._
 import org.apache.openwhisk.common.RedisPacketProtocol._
-import org.apache.commons.math3.distribution.NormalDistribution
+import org.apache.commons.math3.distribution.{NormalDistribution, UniformRealDistribution}
 
 /**
  * A loadbalancer that schedules workload based on power-of-two consistent hashing-algorithm.
@@ -297,15 +297,17 @@ case class ConsistentRandomLoadBalancerState(
   private var runningAndQLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
   private var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
   private var minuteLoadAvg: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
-  private var robinInt: Int = 0,
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
     loadConfigOrThrow[ShardingContainerPoolBalancerConfig](ConfigKeys.loadbalancer))(implicit logging: Logging) {
 
   private val distrib : NormalDistribution = new NormalDistribution(0.5, 0.1)
+  private val uniform_distrib : UniformRealDistribution = new UniformRealDistribution(0.0, 1.0)
   private val load_range : IndexedSeq[BigDecimal] = Range.BigDecimal(0.0, 10.0, 0.01)
   private val transformed_load : IndexedSeq[Double] = load_range.map(x => distrib.cumulativeProbability(x.doubleValue))
+  private var popularity: mutable.Map[String, Integer] = mutable.Map[String, Integer]().withDefaultValue(0)
+  private var invocations: Integer = 0
 
   /** Getters for the variables, setting from the outside is only allowed through the update methods below */
   def invokers: IndexedSeq[InvokerHealth] = _invokers
@@ -357,8 +359,8 @@ case class ConsistentRandomLoadBalancerState(
   private def getLoad(node: ConsistentRandomLoadBalancerNode, loadStrategy: String) : Double = {
     loadStrategy match {
       case "SimpleLoad" => node.load.doubleValue() / lbConfig.invoker.cores
-      case "Running" => runningLoad.getOrElse(node.invoker, 0.0)
-      case "RAndQ" => runningAndQLoad.getOrElse(node.invoker, 0.0)
+      case "Running" => runningLoad.getOrElse(node.invoker, 0.0) / lbConfig.invoker.cores
+      case "RAndQ" => runningAndQLoad.getOrElse(node.invoker, 0.0) / lbConfig.invoker.cores
       case "CPU" => cpuLoad.getOrElse(node.invoker, 0.0)
       case "UsedMem" => memLoad.getOrElse(node.invoker, (0.0, 0.0))._1
       case "ActiveMem" => memLoad.getOrElse(node.invoker, (0.0, 0.0))._2
@@ -386,25 +388,95 @@ case class ConsistentRandomLoadBalancerState(
     }
   }
 
+  def forwardProbability(load: Double) : Boolean = {
+    val prob = searchSortedLoad(load)
+    return uniform_distrib.sample() < prob
+  }
+
+  def searchSortedLoad(load: Double) : Double = {
+    for (i <- 0 to load_range.size) {
+      if (load_range(i) > load) {
+        return transformed_load(i-1)
+      }
+    }
+    return transformed_load(transformed_load.size -1)
+  }
+
+  def isPopular(name: String) : Boolean = {
+    val pop = popularity(name)
+    val ratio = pop / invocations
+    return ratio > (1 / _invokers.size)
+  }
+
   def getInvoker(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
     val strName = s"${fqn.namespace}/${fqn.name}"
+
+    invocations += 1
+    if (! isPopular(strName)) {
+      return getInvokerConsistentCache(fqn, activationId, loadStrategy)
+    }
+
     val possNode = _consistentHash.locate(strName)
+    var chain_len = 0
     if (possNode.isPresent)
     {
-      val loadCuttoff = getLoadCutoff(loadStrategy)
       var node = possNode.get()
       val orig_invoker = node.invoker
       val idx = _consistentHashList.indexWhere( p => p.invoker == orig_invoker)
-      val cutoff = min(_invokers.length, loadCuttoff).toInt
 
-      for (i <- 0 to cutoff) {
+      val max_chain = _invokers.length
+
+      for (i <- 0 to max_chain) {
         val id = (idx + i) % _invokers.length
         node = _consistentHashList(id)
         val serverLoad = getLoad(node, loadStrategy)
 
+        val should_forward = forwardProbability(serverLoad)
+        if (! should_forward) {
+          return updateTrackingData(node, activationId)
+        }
+        chain_len += 1
+      }
+      /* went around enough, give up */
+      if (chain_len > 0) {
+        logging.info(this, s"Activation ${activationId} was pushed ${chain_len} places to ${node.invoker}, from ${orig_invoker}")
+      }
+      return updateTrackingData(node, activationId)
+    }
+     else None
+  }
+
+def getInvokerConsistentCache(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
+    val strName = s"${fqn.namespace}/${fqn.name}"
+    val possNode = _consistentHash.locate(strName)
+    if (possNode.isPresent)
+    {
+      var original_node = possNode.get()
+      val orig_serverLoad = getLoad(original_node, loadStrategy)
+      var node = original_node
+      val loadCuttoff = getLoadCutoff(loadStrategy)
+
+      val idx = _consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
+      val chainLen = _invokers.length // min(_invokers.length, loadCuttoff).toInt
+      var times = runTimes.getOrElse(strName, (0.0, 0.0))
+      var r: Double = 2.2
+      if (times._1 != 0.0) {
+        r = times._2 / times._1
+        r = min(r, 2.2)
+      }
+
+      for (i <- 0 to chainLen) {
+        var id = (idx + i) % _invokers.length
+        node = _consistentHashList(id)
+        val serverLoad = getLoad(node, loadStrategy)
+
         if (serverLoad <= loadCuttoff) {
-          logging.info(this, s"Invoker ${orig_invoker} overloaded, assigning work to node under cutoff ${node.invoker}")
+          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
           /* assign load to node */
+          return updateTrackingData(node, activationId)
+        }
+        else if (serverLoad <= r-1) {
+          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
           return updateTrackingData(node, activationId)
         }
       }
