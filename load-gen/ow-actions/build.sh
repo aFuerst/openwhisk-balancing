@@ -1,6 +1,7 @@
 # rm helloPython.zip
 # cp __main__.py ./venv
 # cp requirements.txt ./venv
+mkdir -p ./venv
 cd ./venv
 
 # rm -rf ./venv/virtualenv

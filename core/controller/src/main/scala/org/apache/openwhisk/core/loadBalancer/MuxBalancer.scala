@@ -48,19 +48,25 @@ class MuxBalancer(
   }
 
   override def invokerHealth(): Future[IndexedSeq[InvokerHealth]] = Future.successful(IndexedSeq.empty[InvokerHealth])
-  override protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
-    // Currently do nothing
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+    defaultLoadBalancer.releaseInvoker(invoker, entry)
   }
   override protected val invokerPool: ActorRef = actorSystem.actorOf(Props.empty)
 
   /**
    * Publish a message to the loadbalancer
-   *
-   * Select the LoadBalancer based on the annotation, if available, otherwise use the default one
-    **/
+   **/
   override def publish(action: ExecutableWhiskActionMetaData, msg: ActivationMessage)(
     implicit transid: TransactionId): Future[Future[Either[ActivationId, WhiskActivation]]] = {
       defaultLoadBalancer.publish(action, msg)
+  }
+
+  override def updateActionTimes() = {
+    defaultLoadBalancer.updateActionTimes()
+  }
+
+  override def emitMetrics() = {
+    defaultLoadBalancer.emitMetrics()
   }
 }
 

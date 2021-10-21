@@ -67,7 +67,7 @@ class ConsistentHashBalancer(
     None
   }
 
-  override protected def emitMetrics() = {
+  override def emitMetrics() = {
     MetricEmitter.emitGaugeMetric(LOADBALANCER_ACTIVATIONS_INFLIGHT(controllerInstance), totalActivations.longValue)
     MetricEmitter.emitGaugeMetric(
       LOADBALANCER_MEMORY_INFLIGHT(controllerInstance, ""),
@@ -167,7 +167,7 @@ class ConsistentHashBalancer(
       sendActivationToInvoker,
       Some(monitor))
 
-  override protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
     schedulingState.releaseInvoker(invoker, entry)
   }
 }

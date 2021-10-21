@@ -69,7 +69,7 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
   protected val totalBlackBoxActivationMemory = new LongAdder()
   protected val totalManagedActivationMemory = new LongAdder()
 
-  protected  def updateActionTimes() = {
+  def updateActionTimes() = {
     try {
       // logging.info(this, s"Connecting to Redis")
       val r = new Jedis(lbConfig.redis.ip, lbConfig.redis.port)
@@ -97,7 +97,7 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
     }
   }
 
-  protected def emitMetrics() = {
+  override def emitMetrics() = {
     MetricEmitter.emitGaugeMetric(LOADBALANCER_ACTIVATIONS_INFLIGHT(controllerInstance), totalActivations.longValue)
     MetricEmitter.emitGaugeMetric(
       LOADBALANCER_MEMORY_INFLIGHT(controllerInstance, ""),
@@ -275,7 +275,7 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
     logging.info(this, s"received result ack for '$aid'")(tid)
   }
 
-  protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry): Unit = 
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry): Unit = 
     {
       logging.info(this, s"base function impl of releaseInvoker '${invoker}' for ${entry}")
     }

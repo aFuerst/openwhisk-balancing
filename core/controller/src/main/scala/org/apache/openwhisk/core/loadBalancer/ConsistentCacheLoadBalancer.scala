@@ -74,7 +74,7 @@ class ConsistentCacheLoadBalancer(
     None
   }
 
-  override protected def emitMetrics() = {
+  override def emitMetrics() = {
     MetricEmitter.emitGaugeMetric(LOADBALANCER_ACTIVATIONS_INFLIGHT(controllerInstance), totalActivations.longValue)
     MetricEmitter.emitGaugeMetric(
       LOADBALANCER_MEMORY_INFLIGHT(controllerInstance, ""),
@@ -179,11 +179,11 @@ class ConsistentCacheLoadBalancer(
       sendActivationToInvoker,
       Some(monitor))
 
-  override protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
       schedulingState.stateReleaseInvoker(invoker, entry)
   }
 
-  override protected def updateActionTimes() = {
+  override def updateActionTimes() = {
     try {
       // logging.info(this, s"Connecting to Redis")
       // val r = new Jedis("lbConfig.redis.ip", 1111)

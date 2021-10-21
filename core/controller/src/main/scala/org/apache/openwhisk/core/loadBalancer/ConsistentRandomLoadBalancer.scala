@@ -75,7 +75,7 @@ class ConsistentRandomLoadBalancer(
     None
   }
 
-  override protected def emitMetrics() = {
+  override def emitMetrics() = {
     MetricEmitter.emitGaugeMetric(LOADBALANCER_ACTIVATIONS_INFLIGHT(controllerInstance), totalActivations.longValue)
     MetricEmitter.emitGaugeMetric(
       LOADBALANCER_MEMORY_INFLIGHT(controllerInstance, ""),
@@ -179,11 +179,11 @@ class ConsistentRandomLoadBalancer(
       sendActivationToInvoker,
       Some(monitor))
 
-  override protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
       schedulingState.stateReleaseInvoker(invoker, entry)
   }
 
-  override protected def updateActionTimes() = {
+  override def updateActionTimes() = {
     try {
       // logging.info(this, s"Connecting to Redis")
       // val r = new Jedis("lbConfig.redis.ip", 1111)
@@ -412,9 +412,13 @@ case class ConsistentRandomLoadBalancerState(
     val strName = s"${fqn.namespace}/${fqn.name}"
 
     invocations += 1
+    val func_pop = popularity(strName) + 1
+    popularity += (strName -> func_pop)
     if (! isPopular(strName)) {
+      logging.info(this, s"unpopular function ${strName} :(")
       return getInvokerConsistentCache(fqn, activationId, loadStrategy)
     }
+    logging.info(this, s"Popular function ${strName}!")
 
     val possNode = _consistentHash.locate(strName)
     var chain_len = 0
@@ -433,8 +437,10 @@ case class ConsistentRandomLoadBalancerState(
 
         val should_forward = forwardProbability(serverLoad)
         if (! should_forward) {
+          logging.info(this, s"Not forwarding from invoker ${node.invoker}, load: ${serverLoad}")
           return updateTrackingData(node, activationId)
         }
+        logging.info(this, s"forwarding from invoker ${node.invoker}, load: ${serverLoad}")
         chain_len += 1
       }
       /* went around enough, give up */
@@ -523,7 +529,7 @@ def getInvokerConsistentCache(fqn: FullyQualifiedEntityName, activationId: Activ
     }.getOrElse {
       logging.error(
         this,
-        s"Tried to release activation '${entry}'' on invoker that doesn't exist '${invoker}'")
+        s"Tried to release activation '${entry}' on invoker that doesn't exist '${invoker}'")
     }
   }
 

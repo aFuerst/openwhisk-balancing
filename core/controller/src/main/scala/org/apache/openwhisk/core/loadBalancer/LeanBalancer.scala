@@ -76,11 +76,11 @@ class LeanBalancer(config: WhiskConfig,
 
   override protected val invokerPool: ActorRef = actorSystem.actorOf(Props.empty)
 
-  override protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
     // Currently do nothing
   }
 
-  override protected def emitMetrics() = {
+  override def emitMetrics() = {
     super.emitMetrics()
   }
 }

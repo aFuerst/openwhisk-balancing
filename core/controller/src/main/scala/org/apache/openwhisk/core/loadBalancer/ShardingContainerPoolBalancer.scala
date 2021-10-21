@@ -165,7 +165,7 @@ class ShardingContainerPoolBalancer(
     None
   }
 
-  override protected def emitMetrics() = {
+  override def emitMetrics() = {
     super.emitMetrics()
     MetricEmitter.emitGaugeMetric(
       INVOKER_TOTALMEM_BLACKBOX,
@@ -323,7 +323,7 @@ class ShardingContainerPoolBalancer(
       sendActivationToInvoker,
       Some(monitor))
 
-  override protected def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
     schedulingState.invokerSlots
       .lift(invoker.toInt)
       .foreach(_.releaseConcurrent(entry.fullyQualifiedEntityName, entry.maxConcurrent, entry.memoryLimit.toMB.toInt))
