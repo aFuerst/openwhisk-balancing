@@ -115,7 +115,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
   val logMessageInterval = 10.seconds
   //periodically emit metrics (don't need to do this for each message!)
   context.system.scheduler.scheduleAtFixedRate(30.seconds, 10.seconds, self, EmitMetrics)
-  context.system.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds, self, UpdateControllerRuntimes)
+  context.system.scheduler.scheduleAtFixedRate(10.seconds, 5.seconds, self, UpdateControllerRuntimes)
   val osBean: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean().asInstanceOf[OperatingSystemMXBean]
 
   // Key is ColdStartKey, value is the number of cold Start in minute

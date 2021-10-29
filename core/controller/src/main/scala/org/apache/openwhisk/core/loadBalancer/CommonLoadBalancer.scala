@@ -166,6 +166,7 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
     // arrives. Return a Future representing the promise to caller.
     // If activation is non-blocking, return a successfully completed Future to caller.
     val resultPromise = if (msg.blocking) {
+      // logging.info(this, s"Activation promise set up for activation: ${msg.activationId}, ${msg.transid}")
       activationPromises.getOrElseUpdate(msg.activationId, Promise[Either[ActivationId, WhiskActivation]]()).future
     } else Future.successful(Left(msg.activationId))
 
@@ -178,9 +179,11 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
     // with running the action. So the current strategy of freeing up the activation's memory in invoker
     // book-keeping will allow the load balancer to send more activations to the invoker. This can lead to
     // invoker overloads so that activations need to wait until other activations complete.
-    activationSlots.getOrElseUpdate(
+    val updated = activationSlots.getOrElseUpdate(
       msg.activationId, {
+        // logging.info(this, s"Activation Slot set up for activation: ${msg.activationId}, ${msg.transid}")(msg.transid)
         val timeoutHandler = actorSystem.scheduler.scheduleOnce(completionAckTimeout) {
+          // logging.error(this, s"Activation timeout in setupActivation: ${msg.activationId}, ${msg.transid}")(msg.transid)
           processCompletion(msg.activationId, msg.transid, forced = true, isSystemError = false, instance = instance)
         }
 
@@ -196,10 +199,13 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
           timeoutHandler,
           isBlackboxInvocation,
           msg.blocking)
-      })
+      });
 
-    resultPromise
-  }
+  // val got = activationSlots.get(msg.activationId);
+  // logging.info(this, s"Result of querying activationSlots for ${msg.activationId}, ${msg.transid}; activationSlots size= ${activationSlots.size}: ${got}  vs result from getOrElseUpdate: ${updated}")(msg.transid);
+
+  return resultPromise;
+}
 
   protected val messageProducer =
     messagingProvider.getProducer(config, Some(ActivationEntityLimit.MAX_ACTIVATION_LIMIT))
@@ -316,6 +322,8 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
       }
     }
 
+    // logging.info(this, s"About to process completion ack for '$aid', activationSlots size = ${activationSlots.size}")(tid)
+
     activationSlots.remove(aid) match {
       case Some(entry) =>
         totalActivations.decrement()
@@ -365,15 +373,17 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
         MetricEmitter.emitCounterMetric(LOADBALANCER_COMPLETION_ACK_HEALTHCHECK)
 
         // guard this
+        // logging.info(this, s"forwarding health completion ack with invocationResult '$invocationResult' from invoker '$invoker' to '$invokerPool'")(tid)
         invoker.foreach(invokerPool ! InvocationFinishedMessage(_, invocationResult))
       case None if !forced =>
         // Received a completion ack that has already been taken out of the state because of a timeout (forced ack).
         // The result is ignored because a timeout has already been reported to the invokerPool per the force.
         // Logging this condition as a warning because the invoker processed the activation and sent a completion
         // message - but not in time.
+        // val keys = activationSlots.keys.map(k => k.toString).mkString(", ")
         logging.warn(
           this,
-          s"received completion ack for '$aid' from $instance which has no entry, system error=$isSystemError")(tid)
+          s"received completion ack for '$aid' from $instance which has no entry, system error=$isSystemError; activationSlots size = ${activationSlots.size}")(tid)
 
         MetricEmitter.emitCounterMetric(LOADBALANCER_COMPLETION_ACK_REGULAR_AFTER_FORCED)
       case None =>
