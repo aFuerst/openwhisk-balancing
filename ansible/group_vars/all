@@ -94,8 +94,6 @@ controller:
   timeoutFactor: "{{ controller_timeout_factor | default(2) }}"
   timeoutAddon: "{{ controller_timeout_addon | default('1 m') }}"
   instances: "{{ groups['controllers'] | length }}"
-  activationStrategy:
-    default: "{{ controller_activation_strategy_default | default('org.apache.openwhisk.core.loadBalancer.ShardingContainerPoolBalancer') }}"
   invoker:
     cores: "{{ controller_loadbalancer_invoker_cores | default(4) }}"
     c: "{{ controller_loadbalancer_invoker_c | default(1) }}"

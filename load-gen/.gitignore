@@ -22,3 +22,6 @@ code/sim/prof/
 code/sim/run_logs/
 code/traces/test
 run-scripts/logs/
+load/testlocust/
+load/transaction/
+load/vary_users/

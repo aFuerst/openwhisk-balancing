@@ -600,8 +600,6 @@ case class RedisLbConfig(password: String,
                          port: Int,
                          ip: String)
 
-case class ActivationStrategy(default: String)
-
 /**
  * Configuration for the sharding container pool balancer.
  *
@@ -611,7 +609,6 @@ case class ActivationStrategy(default: String)
  */
 case class ShardingContainerPoolBalancerConfig(invoker: InvokerLoadConfig,
                                                redis: RedisLbConfig,
-                                               activationStrategy: ActivationStrategy,
                                                managedFraction: Double,
                                                blackboxFraction: Double,
                                                timeoutFactor: Int,
