@@ -64,7 +64,7 @@ trait LoadBalancer {
   /** Gets the throttling for given action. */
   def checkThrottle(namespace: EntityPath, action: String): Boolean = false
 
-  def updateActionTimes()
+  protected def updateActionTimes()
   def emitMetrics()
   def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry)
 }

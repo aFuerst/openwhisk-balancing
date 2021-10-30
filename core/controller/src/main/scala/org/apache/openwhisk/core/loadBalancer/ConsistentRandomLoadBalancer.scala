@@ -183,7 +183,7 @@ class ConsistentRandomLoadBalancer(
       schedulingState.stateReleaseInvoker(invoker, entry)
   }
 
-  override def updateActionTimes() = {
+  override protected def updateActionTimes() = {
     try {
       // logging.info(this, s"Connecting to Redis")
       // val r = new Jedis("lbConfig.redis.ip", 1111)

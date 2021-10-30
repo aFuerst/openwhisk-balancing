@@ -69,7 +69,7 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
   protected val totalBlackBoxActivationMemory = new LongAdder()
   protected val totalManagedActivationMemory = new LongAdder()
 
-  def updateActionTimes() = {
+  protected def updateActionTimes() = {
     try {
       // logging.info(this, s"Connecting to Redis")
       val r = new Jedis(lbConfig.redis.ip, lbConfig.redis.port)
@@ -111,7 +111,7 @@ abstract class CommonLoadBalancer(config: WhiskConfig,
   }
 
   actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => emitMetrics())
-  actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => updateActionTimes())
+  actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 5.seconds)(() => updateActionTimes())
 
   override def activeActivationsFor(namespace: UUID): Future[Int] =
     Future.successful(activationsPerNamespace.get(namespace).map(_.intValue).getOrElse(0))
