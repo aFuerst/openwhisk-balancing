@@ -12,12 +12,27 @@ do
   if [ "$?" = 0 ];
   then
     echo "Updating $IP"
-    sshpass -p $pw ssh "ow@$IP" -q "docker rmi alfuerst/controller:latest"
-    sshpass -p $pw ssh "ow@$IP" -q "docker rmi alfuerst/invoker:latest"
+    cmd="docker kill \$(docker ps -q);
+docker rm -f \$(docker ps -aq);
+docker system prune -f;
+docker rmi alfuerst/controller:latest;
+docker rmi alfuerst/invoker:latest;
+docker pull alfuerst/controller:latest;
+docker pull alfuerst/invoker:latest;
+cd /home/ow/openwhisk-caching;
+git pull"
 
-    sshpass -p $pw ssh "ow@$IP" -q "docker pull alfuerst/controller:latest"
-    sshpass -p $pw ssh "ow@$IP" -q "docker pull alfuerst/invoker:latest"
+    sshpass -p $pw ssh "ow@$IP" -q $cmd & > /dev/null
+    # sshpass -p $pw ssh "ow@$IP" -q "docker kill $(docker ps -q)"
+    # sshpass -p $pw ssh "ow@$IP" -q "docker rm -f $(docker ps -aq)"
+    # sshpass -p $pw ssh "ow@$IP" -q "docker system prune -f"
 
-    sshpass -p $pw ssh "ow@$IP" -q "cd /home/ow/openwhisk-caching; git pull"
+    # sshpass -p $pw ssh "ow@$IP" -q "docker rmi alfuerst/controller:latest"
+    # sshpass -p $pw ssh "ow@$IP" -q "docker rmi alfuerst/invoker:latest"
+
+    # sshpass -p $pw ssh "ow@$IP" -q "docker pull alfuerst/controller:latest"
+    # sshpass -p $pw ssh "ow@$IP" -q "docker pull alfuerst/invoker:latest"
+
+    # sshpass -p $pw ssh "ow@$IP" -q "cd /home/ow/openwhisk-caching; git pull"
   fi
 done

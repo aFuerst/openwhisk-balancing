@@ -23,7 +23,7 @@ SERVER=$(($VMID/3))
 CPUS=16
 if [ $VMID == 0 ]
 then
-CPUS=8
+CPUS=12
 fi
 
 drive=/extra/alfuerst/qemu-imgs/openwhisk-cache-ubu.img

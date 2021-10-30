@@ -11,7 +11,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Run FaasCache Simulation')
 parser.add_argument("--savepth", type=str, default="/path/to/place/out.csv", required=True)
 parser.add_argument("--host", type=str, default="https://172.29.200.161:10001", required=False)
-parser.add_argument("--auth", type=str, default="a6146758-674e-4bdf-990a-c6affc45b696:e7M1kFyxOxNNbVnMVUhghe1A3Rs7tF0T2NX2bPkWrMRMdZaWp5XEotqtT6FwM8Co", required=False)
+parser.add_argument("--auth", type=str, default="2808ef88-a07b-4c0a-b43c-35aae16b23f1:uSBzPCl92yjKFWTEOFulTWFUlXttpAIOOp50b1fsIu0xULSoHlEQzqhpgGXbetEk", required=False)
 parser.add_argument("--numcpus", type=float, default=4, required=False)
 parser.add_argument("--lenmins", type=int, default=10, required=False)
 args = parser.parse_args()

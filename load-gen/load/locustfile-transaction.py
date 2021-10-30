@@ -77,7 +77,7 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
           i += 1
         if i == max_wait:
           success = False
-          failure_msg = "Activation with ID {} failed to finish reasonbly. {}".format(activation_id, resp_json)
+          failure_msg = "Activation with ID {} failed to finish reasonbly. {}".format(activation_id)
 
         ret_json = r.json()
         if "response" in ret_json and "result" in ret_json["response"] and "body" in ret_json["response"]["result"]:
@@ -88,7 +88,7 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
         failure_msg = ret_json["cold"]
       else:
         success = False
-        failure_msg = "Got invalid json. {} {}".format(activation_id, resp_json)
+        failure_msg = "Got invalid json. {} {}".format(activation_id, ret_json)
 
     except Exception as e:
       failure_msg = "Got exception '{}' when trying to invoke action '{}', result: '{}' - '{}'".format(e, action.url, r.status_code, r.content)

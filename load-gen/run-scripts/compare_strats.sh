@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=a6146758-674e-4bdf-990a-c6affc45b696:e7M1kFyxOxNNbVnMVUhghe1A3Rs7tF0T2NX2bPkWrMRMdZaWp5XEotqtT6FwM8Co
+export AUTH=2808ef88-a07b-4c0a-b43c-35aae16b23f1:uSBzPCl92yjKFWTEOFulTWFUlXttpAIOOp50b1fsIu0xULSoHlEQzqhpgGXbetEk
 
 for STRAT in "SimpleLoad" "Running" "RAndQ" "LoadAvg"
 do
