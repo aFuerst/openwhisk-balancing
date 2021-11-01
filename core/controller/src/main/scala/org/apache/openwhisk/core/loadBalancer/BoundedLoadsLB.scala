@@ -53,7 +53,7 @@ import org.apache.openwhisk.common.RedisPacketProtocol._
 /**
  * A loadbalancer that schedules workload based on power-of-two consistent hashing-algorithm.
  */
-class ConsistentCacheLoadBalancer(
+class BoundedLoadsLB(
   config: WhiskConfig,
   controllerInstance: ControllerInstanceId,
   feedFactory: FeedFactory,
@@ -88,13 +88,13 @@ class ConsistentCacheLoadBalancer(
   }
 
   /** State needed for scheduling. */
-  val schedulingState = ConsistentCacheLoadBalancerState()(lbConfig)
+  val schedulingState = BoundedLoadsLBState()(lbConfig)
 
   /**
    * Monitors invoker supervision and the cluster to update the state sequentially
    *
    * All state updates should go through this actor to guarantee that
-   * [[ConsistentCacheLoadBalancerState.updateInvokers]] and [[ConsistentCacheLoadBalancerState.updateCluster]]
+   * [[BoundedLoadsLBState.updateInvokers]] and [[BoundedLoadsLBState.updateCluster]]
    * are called exclusive of each other and not concurrently.
    */
   private val monitor = actorSystem.actorOf(Props(new Actor {
@@ -140,7 +140,7 @@ class ConsistentCacheLoadBalancer(
   override def publish(action: ExecutableWhiskActionMetaData, msg: ActivationMessage)(
     implicit transid: TransactionId): Future[Future[Either[ActivationId, WhiskActivation]]] = {
 
-      val chosen = ConsistentCacheLoadBalancer.schedule(action.fullyQualifiedName(true),
+      val chosen = BoundedLoadsLB.schedule(action.fullyQualifiedName(true),
                                                         schedulingState, 
                                                         msg.activationId, 
                                                         lbConfig.loadStrategy,
@@ -217,7 +217,7 @@ class ConsistentCacheLoadBalancer(
   }  
 }
 
-object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
+object BoundedLoadsLB extends LoadBalancerProvider {
 
   override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
     implicit actorSystem: ActorSystem,
@@ -242,7 +242,7 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
       }
 
     }
-    new ConsistentCacheLoadBalancer(
+    new BoundedLoadsLB(
       whiskConfig,
       instance,
       createFeedFactory(whiskConfig, instance),
@@ -259,28 +259,21 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
    */
   def schedule(
     fqn: FullyQualifiedEntityName,
-    state: ConsistentCacheLoadBalancerState,
+    state: BoundedLoadsLBState,
     activationId: ActivationId,
     loadStrategy: String,
     algo: String)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
       logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
-      algo match {
-        case "ConsistentCache" => state.getInvokerConsistentCache(fqn, activationId, loadStrategy)
-        case "ConsistentHash" => state.getInvokerConsistentHash(fqn, activationId, loadStrategy)
-        case _ => {
-          logging.error(this, s"schedule: Unsupported loadbalancing algorithm ${algo}")
-          None
-        }
-      }  
+      state.getInvokerBoundedLoad(fqn, activationId, loadStrategy)
     }
 }
 
-class ConsisntentCacheInvokerNode(_invoker: InvokerInstanceId, _load: Option[AtomicInteger])(implicit logging: Logging)
+class BoundedLoadsLBInvokerNode(_invoker: InvokerInstanceId, _load: Option[AtomicInteger])(implicit logging: Logging)
   extends Node {
   
   val invoker : InvokerInstanceId = _invoker
   logging.info(this,
-        s"ConsisntentCacheInvokerNode created for invoker '${_invoker}' with passed load of '${_load}'")
+        s"BoundedLoadsLBInvokerNode created for invoker '${_invoker}' with passed load of '${_load}'")
 
   var load : AtomicInteger = _load.getOrElse(new AtomicInteger(0))
 
@@ -294,9 +287,9 @@ class ConsisntentCacheInvokerNode(_invoker: InvokerInstanceId, _load: Option[Ato
  *
  * @param _invokers all of the known invokers in the system
  */
-case class ConsistentCacheLoadBalancerState(
-  private var _consistentHash: ConsistentHash[ConsisntentCacheInvokerNode] = HashRing.newBuilder().build(),
-  private var _consistentHashList: List[ConsisntentCacheInvokerNode] = List(),
+case class BoundedLoadsLBState(
+  private var _consistentHash: ConsistentHash[BoundedLoadsLBInvokerNode] = HashRing.newBuilder().build(),
+  private var _consistentHashList: List[BoundedLoadsLBInvokerNode] = List(),
 
   // private var startTimes: mutable.Map[ActivationId, Long] = mutable.Map.empty[ActivationId, Long],
   private var runTimes: mutable.Map[String, (Double, Double)] = mutable.Map.empty[String, (Double, Double)], // (warm, cold)
@@ -352,12 +345,12 @@ case class ConsistentCacheLoadBalancerState(
     }
   }
 
-  private def updateTrackingData(node: ConsisntentCacheInvokerNode, activationId: ActivationId) : Option[InvokerInstanceId] = {
+  private def updateTrackingData(node: BoundedLoadsLBInvokerNode, activationId: ActivationId) : Option[InvokerInstanceId] = {
     node.load.incrementAndGet()
     return Some(node.invoker)
   }
 
-  private def getLoad(node: ConsisntentCacheInvokerNode, loadStrategy: String) : Double = {
+  private def getLoad(node: BoundedLoadsLBInvokerNode, loadStrategy: String) : Double = {
     loadStrategy match {
       case "SimpleLoad" => node.load.doubleValue() / lbConfig.invoker.cores
       case "Running" => runningLoad.getOrElse(node.invoker, 0.0)
@@ -389,47 +382,25 @@ case class ConsistentCacheLoadBalancerState(
     }
   }
 
-  def getInvokerConsistentHash(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
+  def getInvokerBoundedLoad(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
     val strName = s"${fqn.namespace}/${fqn.name}"
     val possNode = _consistentHash.locate(strName)
     if (possNode.isPresent)
     {
-      Some(possNode.get().invoker)
-    }
-    else None
-  }
-
-  def getInvokerConsistentCache(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
-    val strName = s"${fqn.namespace}/${fqn.name}"
-    val possNode = _consistentHash.locate(strName)
-    if (possNode.isPresent)
-    {
-      var original_node = possNode.get()
-      val orig_serverLoad = getLoad(original_node, loadStrategy)
-      var node = original_node
       val loadCuttoff = getLoadCutoff(loadStrategy)
+      var node = possNode.get()
+      val orig_invoker = node.invoker
+      val idx = _consistentHashList.indexWhere( p => p.invoker == orig_invoker)
+      val cutoff = min(_invokers.length, loadCuttoff).toInt
 
-      val idx = _consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
-      val chainLen = _invokers.length // min(_invokers.length, loadCuttoff).toInt
-      var times = runTimes.getOrElse(strName, (0.0, 0.0))
-      var r: Double = 2.2
-      if (times._1 != 0.0) {
-        r = times._2 / times._1
-        r = min(r, 2.2)
-      }
-
-      for (i <- 0 to chainLen) {
-        var id = (idx + i) % _invokers.length
+      for (i <- 0 to cutoff) {
+        val id = (idx + i) % _invokers.length
         node = _consistentHashList(id)
         val serverLoad = getLoad(node, loadStrategy)
 
         if (serverLoad <= loadCuttoff) {
-          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
+          logging.info(this, s"Invoker ${orig_invoker} overloaded, assigning work to node under cutoff ${node.invoker}")
           /* assign load to node */
-          return updateTrackingData(node, activationId)
-        }
-        else if (serverLoad <= r-1) {
-          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
           return updateTrackingData(node, activationId)
         }
       }
@@ -449,11 +420,11 @@ case class ConsistentCacheLoadBalancerState(
     val oldSize = _invokers.size
     val newSize = newInvokers.size
 
-    val newHash : ConsistentHash[ConsisntentCacheInvokerNode] = HashRing.newBuilder().build()
+    val newHash : ConsistentHash[BoundedLoadsLBInvokerNode] = HashRing.newBuilder().build()
     newInvokers.map { invoker => 
       
       val currentLoad: Option[AtomicInteger] = _consistentHashList.find(p => p.invoker == invoker.id).map { _.load }
-      newHash.add(new ConsisntentCacheInvokerNode(invoker.id, currentLoad))
+      newHash.add(new BoundedLoadsLBInvokerNode(invoker.id, currentLoad))
     
     } // .toString()
 
