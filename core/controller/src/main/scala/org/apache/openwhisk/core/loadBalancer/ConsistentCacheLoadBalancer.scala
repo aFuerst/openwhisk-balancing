@@ -268,7 +268,6 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
         case "ConsistentCache" => state.getInvokerConsistentCache(fqn, activationId, loadStrategy)
         case "BoundedLoad" => state.getInvokerBoundedLoad(fqn, activationId, loadStrategy)
         case "ConsistentHash" => state.getInvokerConsistentHash(fqn, activationId, loadStrategy)
-        case "RoundRobin" => state.roundRobin()
         case _ => {
           logging.error(this, s"schedule: Unsupported loadbalancing algorithm ${algo}")
           None
@@ -307,7 +306,6 @@ case class ConsistentCacheLoadBalancerState(
   private var runningAndQLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
   private var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
   private var minuteLoadAvg: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
-  private var robinInt: Int = 0,
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -390,13 +388,6 @@ case class ConsistentCacheLoadBalancerState(
         2.0
       }
     }
-  }
-
-  def roundRobin() : Option[InvokerInstanceId] = {
-    val ret = _invokers(robinInt)
-    robinInt += 1
-    robinInt %= _invokers.length;
-    return Some(ret.id)
   }
 
   def getInvokerConsistentHash(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
