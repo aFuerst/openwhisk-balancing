@@ -34,7 +34,7 @@ import scala.math.{min}
 /**
  * A loadbalancer that schedules workload based on power-of-two consistent hashing-algorithm.
  */
-class ConsistentCacheLoadBalancer(
+class BoundedLoadsLoadBalancer(
   config: WhiskConfig,
   controllerInstance: ControllerInstanceId,
   feedFactory: FeedFactory,
@@ -48,7 +48,7 @@ class ConsistentCacheLoadBalancer(
   override def publish(action: ExecutableWhiskActionMetaData, msg: ActivationMessage)(
     implicit transid: TransactionId): Future[Future[Either[ActivationId, WhiskActivation]]] = {
 
-      val chosen = ConsistentCacheLoadBalancer.schedule(action.fullyQualifiedName(true),
+      val chosen = BoundedLoadsLoadBalancer.schedule(action.fullyQualifiedName(true),
                                                         schedulingState, 
                                                         msg.activationId, 
                                                         lbConfig.loadStrategy,
@@ -80,7 +80,7 @@ class ConsistentCacheLoadBalancer(
   }
 }
 
-object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
+object BoundedLoadsLoadBalancer extends LoadBalancerProvider {
 
   override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
     implicit actorSystem: ActorSystem,
@@ -105,7 +105,7 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
       }
 
     }
-    new ConsistentCacheLoadBalancer(
+    new BoundedLoadsLoadBalancer(
       whiskConfig,
       instance,
       createFeedFactory(whiskConfig, instance),
@@ -129,45 +129,32 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
     (implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
       // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
 
-      val strName = s"${fqn.namespace}/${fqn.name}"
-      val possNode = schedulingState._consistentHash.locate(strName)
-      if (possNode.isPresent)
-      {
-        var original_node = possNode.get()
-        val orig_serverLoad = schedulingState.getLoad(original_node, loadStrategy)
-        var node = original_node
-        val loadCuttoff = schedulingState.getLoadCutoff(loadStrategy)
+    val strName = s"${fqn.namespace}/${fqn.name}"
+    val possNode = schedulingState._consistentHash.locate(strName)
+    if (possNode.isPresent)
+    {
+      val loadCuttoff = schedulingState.getLoadCutoff(loadStrategy)
+      var node = possNode.get()
+      val orig_invoker = node.invoker
+      val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == orig_invoker)
+      val cutoff = min(schedulingState.invokers.length, loadCuttoff).toInt
 
-        val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
-        val chainLen = schedulingState.invokers.length // min(_invokers.length, loadCuttoff).toInt
-        var times = schedulingState.runTimes.getOrElse(strName, (0.0, 0.0))
-        var r: Double = 2.2
-        if (times._1 != 0.0) {
-          r = times._2 / times._1
-          r = min(r, 2.2)
+      for (i <- 0 to cutoff) {
+        val id = (idx + i) % schedulingState.invokers.length
+        node = schedulingState._consistentHashList(id)
+        val serverLoad = schedulingState.getLoad(node, loadStrategy)
+
+        if (serverLoad <= loadCuttoff) {
+          logging.info(this, s"Invoker ${orig_invoker} overloaded, assigning work to node under cutoff ${node.invoker}")
+          /* assign load to node */
+          schedulingState.updateTrackingData(node)
+          return Some(node.invoker)
         }
-
-        for (i <- 0 to chainLen) {
-          var id = (idx + i) % schedulingState.invokers.length
-          node = schedulingState._consistentHashList(id)
-          val serverLoad = schedulingState.getLoad(node, loadStrategy)
-
-          if (serverLoad <= loadCuttoff) {
-            // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
-            /* assign load to node */
-            schedulingState.updateTrackingData(node)
-            return Some(node.invoker)
-          }
-          else if (serverLoad <= r-1) {
-            // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
-            schedulingState.updateTrackingData(node)
-            return Some(node.invoker)
-          }
-        }
-        /* went around enough, give up */
-        schedulingState.updateTrackingData(node)
-        return Some(node.invoker)
       }
-      else None
+      /* went around enough, give up */
+      schedulingState.updateTrackingData(node)
+      return Some(node.invoker)
+    }
+     else None
     }
 }

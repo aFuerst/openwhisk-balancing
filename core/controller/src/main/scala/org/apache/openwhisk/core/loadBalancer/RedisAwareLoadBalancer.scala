@@ -17,8 +17,8 @@
 
 package org.apache.openwhisk.core.loadBalancer
 
-import akka.actor.ActorRef
-import akka.actor.ActorRefFactory
+// import akka.actor.ActorRef
+// import akka.actor.ActorRefFactory
 
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.cluster.ClusterEvent._
@@ -26,11 +26,11 @@ import akka.cluster.{Cluster, Member, MemberStatus}
 import akka.management.scaladsl.AkkaManagement
 import akka.management.cluster.bootstrap.ClusterBootstrap
 // import akka.stream.ActorMaterializer
-import org.apache.kafka.clients.producer.RecordMetadata
+// import org.apache.kafka.clients.producer.RecordMetadata
 import pureconfig._
 import pureconfig.generic.auto._
 import org.apache.openwhisk.common._
-import org.apache.openwhisk.core.WhiskConfig._
+// import org.apache.openwhisk.core.WhiskConfig._
 import org.apache.openwhisk.core.connector._
 import org.apache.openwhisk.core.entity._
 import org.apache.openwhisk.common.LoggingMarkers._
@@ -41,7 +41,7 @@ import org.apache.openwhisk.spi.SpiLoader
 import scala.concurrent.Future
 import scala.collection.JavaConverters._
 import java.util.concurrent.atomic.AtomicInteger
-import scala.math.{min} //, max}
+// import scala.math.{min} //, max}
 import scala.collection.mutable
 
 import org.ishugaliy.allgood.consistent.hash.{HashRing, ConsistentHash}
@@ -51,9 +51,9 @@ import spray.json._
 import org.apache.openwhisk.common.RedisPacketProtocol._
 
 /**
- * A loadbalancer that schedules workload based on power-of-two consistent hashing-algorithm.
+ * A loadbalancer that schedules workload based on 
  */
-class BoundedLoadsLB(
+abstract class RedisAwareLoadBalancer(
   config: WhiskConfig,
   controllerInstance: ControllerInstanceId,
   feedFactory: FeedFactory,
@@ -88,13 +88,13 @@ class BoundedLoadsLB(
   }
 
   /** State needed for scheduling. */
-  val schedulingState = BoundedLoadsLBState()(lbConfig)
+  protected val schedulingState = RedisAwareLoadBalancerState()(lbConfig)
 
   /**
    * Monitors invoker supervision and the cluster to update the state sequentially
    *
    * All state updates should go through this actor to guarantee that
-   * [[BoundedLoadsLBState.updateInvokers]] and [[BoundedLoadsLBState.updateCluster]]
+   * [[RedisAwareLoadBalancerState.updateInvokers]] and [[RedisAwareLoadBalancerState.updateCluster]]
    * are called exclusive of each other and not concurrently.
    */
   private val monitor = actorSystem.actorOf(Props(new Actor {
@@ -136,41 +136,6 @@ class BoundedLoadsLB(
   override def invokerHealth(): Future[IndexedSeq[InvokerHealth]] = Future.successful(schedulingState.invokers)
   override def clusterSize: Int = schedulingState.invokers.length
 
-  /** 1. Publish a message to the loadbalancer */
-  override def publish(action: ExecutableWhiskActionMetaData, msg: ActivationMessage)(
-    implicit transid: TransactionId): Future[Future[Either[ActivationId, WhiskActivation]]] = {
-
-      val chosen = BoundedLoadsLB.schedule(action.fullyQualifiedName(true),
-                                                        schedulingState, 
-                                                        msg.activationId, 
-                                                        lbConfig.loadStrategy,
-                                                        lbConfig.algorithm)
-
-    chosen.map { invoker => 
-      // MemoryLimit() and TimeLimit() return singletons - they should be fast enough to be used here
-      val memoryLimit = action.limits.memory
-      val memoryLimitInfo = if (memoryLimit == MemoryLimit()) { "std" } else { "non-std" }
-      val timeLimit = action.limits.timeout
-      val timeLimitInfo = if (timeLimit == TimeLimit()) { "std" } else { "non-std" }
-      logging.info(this,
-        s"scheduled activation ${msg.activationId}, action '${msg.action.asString}', ns '${msg.user.namespace.name.asString}', mem limit ${memoryLimit.megabytes} MB (${memoryLimitInfo}), time limit ${timeLimit.duration.toMillis} ms (${timeLimitInfo}) to ${invoker}")
-      val activationResult = setupActivation(msg, action, invoker)
-      sendActivationToInvoker(messageProducer, msg, invoker).map(_ => activationResult)
-    }
-    .getOrElse {
-      // report the state of all invokers
-      val invokerStates = schedulingState.invokers.foldLeft(Map.empty[InvokerState, Int]) { (agg, curr) =>
-        val count = agg.getOrElse(curr.status, 0) + 1
-        agg + (curr.status -> count)
-      }
-
-      logging.error(
-        this,
-        s"failed to schedule activation ${msg.activationId}, action '${msg.action.asString}', ns '${msg.user.namespace.name.asString}' - invokers to use: $invokerStates")
-      Future.failed(LoadBalancerException("No invokers available"))
-    }
-  }
-
   override val invokerPool =
     invokerPoolFactory.createInvokerPool(
       actorSystem,
@@ -185,8 +150,6 @@ class BoundedLoadsLB(
 
   override protected def updateActionTimes() = {
     try {
-      // logging.info(this, s"Connecting to Redis")
-      // val r = new Jedis("lbConfig.redis.ip", 1111)
       val r = new Jedis(lbConfig.redis.ip, lbConfig.redis.port)
       r.auth(lbConfig.redis.password)
       
@@ -210,70 +173,19 @@ class BoundedLoadsLB(
         case e: redis.clients.jedis.exceptions.JedisDataException => logging.warn(this, s"Failed to log into redis server, $e")
         case scala.util.control.NonFatal(t) => {
           var trace = t.getStackTrace.map { trace => trace.toString() }.mkString("\n")
-          logging.error(this, s"Unknonwn error, '$t', at ${trace}")
+          logging.error(this, s"Unknonwn error updating from Redis, '$t', at ${trace}")
         } 
     }
     schedulingState.emitMetrics()
   }  
 }
 
-object BoundedLoadsLB extends LoadBalancerProvider {
-
-  override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
-    implicit actorSystem: ActorSystem,
-    logging: Logging): LoadBalancer = {
-
-    val invokerPoolFactory = new InvokerPoolFactory {
-      override def createInvokerPool(
-        actorRefFactory: ActorRefFactory,
-        messagingProvider: MessagingProvider,
-        messagingProducer: MessageProducer,
-        sendActivationToInvoker: (MessageProducer, ActivationMessage, InvokerInstanceId) => Future[RecordMetadata],
-        monitor: Option[ActorRef]): ActorRef = {
-
-        InvokerPool.prepare(instance, WhiskEntityStore.datastore())
-
-        actorRefFactory.actorOf(
-          InvokerPool.props(
-            (f, i) => f.actorOf(InvokerActor.props(i, instance)),
-            (m, i) => sendActivationToInvoker(messagingProducer, m, i),
-            messagingProvider.getConsumer(whiskConfig, s"health${instance.asString}", "health", maxPeek = 128),
-            monitor))
-      }
-
-    }
-    new BoundedLoadsLB(
-      whiskConfig,
-      instance,
-      createFeedFactory(whiskConfig, instance),
-      invokerPoolFactory)
-  }
-
-  def requiredProperties: Map[String, String] = kafkaHosts
-
-  /**
-   * Scans through all invokers and searches for an invoker tries to get a free slot on an invoker. 
-   *
-   * @param fqn action name to be scheduled
-   * @return an invoker to schedule to
-   */
-  def schedule(
-    fqn: FullyQualifiedEntityName,
-    state: BoundedLoadsLBState,
-    activationId: ActivationId,
-    loadStrategy: String,
-    algo: String)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
-      logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
-      state.getInvokerBoundedLoad(fqn, activationId, loadStrategy)
-    }
-}
-
-class BoundedLoadsLBInvokerNode(_invoker: InvokerInstanceId, _load: Option[AtomicInteger])(implicit logging: Logging)
+class ConsistentCacheInvokerNode(_invoker: InvokerInstanceId, _load: Option[AtomicInteger])(implicit logging: Logging)
   extends Node {
   
   val invoker : InvokerInstanceId = _invoker
   logging.info(this,
-        s"BoundedLoadsLBInvokerNode created for invoker '${_invoker}' with passed load of '${_load}'")
+        s"ConsistentCacheInvokerNode created for invoker '${_invoker}' with passed load of '${_load}'")
 
   var load : AtomicInteger = _load.getOrElse(new AtomicInteger(0))
 
@@ -287,17 +199,17 @@ class BoundedLoadsLBInvokerNode(_invoker: InvokerInstanceId, _load: Option[Atomi
  *
  * @param _invokers all of the known invokers in the system
  */
-case class BoundedLoadsLBState(
-  private var _consistentHash: ConsistentHash[BoundedLoadsLBInvokerNode] = HashRing.newBuilder().build(),
-  private var _consistentHashList: List[BoundedLoadsLBInvokerNode] = List(),
+case class RedisAwareLoadBalancerState(
+  var _consistentHash: ConsistentHash[ConsistentCacheInvokerNode] = HashRing.newBuilder().build(),
+  var _consistentHashList: List[ConsistentCacheInvokerNode] = List(),
 
   // private var startTimes: mutable.Map[ActivationId, Long] = mutable.Map.empty[ActivationId, Long],
-  private var runTimes: mutable.Map[String, (Double, Double)] = mutable.Map.empty[String, (Double, Double)], // (warm, cold)
-  private var cpuLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
-  private var runningLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
-  private var runningAndQLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
-  private var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
-  private var minuteLoadAvg: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  var runTimes: mutable.Map[String, (Double, Double)] = mutable.Map.empty[String, (Double, Double)], // (warm, cold)
+  var cpuLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  var runningLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  var runningAndQLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
+  var minuteLoadAvg: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -345,12 +257,11 @@ case class BoundedLoadsLBState(
     }
   }
 
-  private def updateTrackingData(node: BoundedLoadsLBInvokerNode, activationId: ActivationId) : Option[InvokerInstanceId] = {
+  def updateTrackingData(node: ConsistentCacheInvokerNode) : Unit = {
     node.load.incrementAndGet()
-    return Some(node.invoker)
   }
 
-  private def getLoad(node: BoundedLoadsLBInvokerNode, loadStrategy: String) : Double = {
+  def getLoad(node: ConsistentCacheInvokerNode, loadStrategy: String) : Double = {
     loadStrategy match {
       case "SimpleLoad" => node.load.doubleValue() / lbConfig.invoker.cores
       case "Running" => runningLoad.getOrElse(node.invoker, 0.0)
@@ -366,7 +277,7 @@ case class BoundedLoadsLBState(
     }
   }
 
-  private def getLoadCutoff(loadStrategy: String) : Double = {
+  def getLoadCutoff(loadStrategy: String) : Double = {
     loadStrategy match {
       case "SimpleLoad" => lbConfig.invoker.boundedCeil * lbConfig.invoker.c
       case "Running" => lbConfig.invoker.boundedCeil * lbConfig.invoker.c
@@ -382,34 +293,6 @@ case class BoundedLoadsLBState(
     }
   }
 
-  def getInvokerBoundedLoad(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
-    val strName = s"${fqn.namespace}/${fqn.name}"
-    val possNode = _consistentHash.locate(strName)
-    if (possNode.isPresent)
-    {
-      val loadCuttoff = getLoadCutoff(loadStrategy)
-      var node = possNode.get()
-      val orig_invoker = node.invoker
-      val idx = _consistentHashList.indexWhere( p => p.invoker == orig_invoker)
-      val cutoff = min(_invokers.length, loadCuttoff).toInt
-
-      for (i <- 0 to cutoff) {
-        val id = (idx + i) % _invokers.length
-        node = _consistentHashList(id)
-        val serverLoad = getLoad(node, loadStrategy)
-
-        if (serverLoad <= loadCuttoff) {
-          logging.info(this, s"Invoker ${orig_invoker} overloaded, assigning work to node under cutoff ${node.invoker}")
-          /* assign load to node */
-          return updateTrackingData(node, activationId)
-        }
-      }
-      /* went around enough, give up */
-      return updateTrackingData(node, activationId)
-    }
-     else None
-  }
-
   /**
    * Updates the scheduling state with the new invokers.
    *
@@ -420,11 +303,11 @@ case class BoundedLoadsLBState(
     val oldSize = _invokers.size
     val newSize = newInvokers.size
 
-    val newHash : ConsistentHash[BoundedLoadsLBInvokerNode] = HashRing.newBuilder().build()
+    val newHash : ConsistentHash[ConsistentCacheInvokerNode] = HashRing.newBuilder().build()
     newInvokers.map { invoker => 
       
       val currentLoad: Option[AtomicInteger] = _consistentHashList.find(p => p.invoker == invoker.id).map { _.load }
-      newHash.add(new BoundedLoadsLBInvokerNode(invoker.id, currentLoad))
+      newHash.add(new ConsistentCacheInvokerNode(invoker.id, currentLoad))
     
     } // .toString()
 
