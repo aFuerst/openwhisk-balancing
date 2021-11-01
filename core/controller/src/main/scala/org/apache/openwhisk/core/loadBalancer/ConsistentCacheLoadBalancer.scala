@@ -264,14 +264,7 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
     loadStrategy: String,
     algo: String)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
       logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
-      algo match {
-        case "ConsistentCache" => state.getInvokerConsistentCache(fqn, activationId, loadStrategy)
-        case "ConsistentHash" => state.getInvokerConsistentHash(fqn, activationId, loadStrategy)
-        case _ => {
-          logging.error(this, s"schedule: Unsupported loadbalancing algorithm ${algo}")
-          None
-        }
-      }  
+      state.getInvokerConsistentCache(fqn, activationId, loadStrategy)
     }
 }
 
@@ -387,16 +380,6 @@ case class ConsistentCacheLoadBalancerState(
         2.0
       }
     }
-  }
-
-  def getInvokerConsistentHash(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
-    val strName = s"${fqn.namespace}/${fqn.name}"
-    val possNode = _consistentHash.locate(strName)
-    if (possNode.isPresent)
-    {
-      Some(possNode.get().invoker)
-    }
-    else None
   }
 
   def getInvokerConsistentCache(fqn: FullyQualifiedEntityName, activationId: ActivationId, loadStrategy: String) : Option[InvokerInstanceId] = {
