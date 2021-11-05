@@ -145,14 +145,17 @@ object BoundedLoadsLoadBalancer extends LoadBalancerProvider {
         val serverLoad = schedulingState.getLoad(node, loadStrategy)
 
         if (serverLoad <= loadCuttoff) {
-          logging.info(this, s"Invoker ${orig_invoker} overloaded, assigning work to node under cutoff ${node.invoker}")
+          if (orig_invoker != node.invoker) {
+            logging.info(this, s"Invoker ${orig_invoker} overloaded, assigning work to node under cutoff ${node.invoker}")
+          }
           /* assign load to node */
-          schedulingState.updateTrackingData(node)
+          schedulingState.updateTrackingData(node, loadStrategy)
           return Some(node.invoker)
         }
       }
       /* went around enough, give up */
-      schedulingState.updateTrackingData(node)
+      logging.info(this, s"Exhausted all invokers, starting at ${orig_invoker} sending to ${node.invoker}")
+      schedulingState.updateTrackingData(node, loadStrategy)
       return Some(node.invoker)
     }
      else None

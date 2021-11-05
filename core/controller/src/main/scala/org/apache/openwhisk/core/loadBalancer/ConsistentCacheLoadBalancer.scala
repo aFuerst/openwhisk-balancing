@@ -155,17 +155,17 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
           if (serverLoad <= loadCuttoff) {
             // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
             /* assign load to node */
-            schedulingState.updateTrackingData(node)
+            schedulingState.updateTrackingData(node, loadStrategy)
             return Some(node.invoker)
           }
           else if (serverLoad <= r-1) {
             // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
-            schedulingState.updateTrackingData(node)
+            schedulingState.updateTrackingData(node, loadStrategy)
             return Some(node.invoker)
           }
         }
         /* went around enough, give up */
-        schedulingState.updateTrackingData(node)
+        schedulingState.updateTrackingData(node, loadStrategy)
         return Some(node.invoker)
       }
       else None

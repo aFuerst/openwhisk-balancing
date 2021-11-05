@@ -210,6 +210,7 @@ case class RedisAwareLoadBalancerState(
   var runningAndQLoad: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
   var memLoad: mutable.Map[InvokerInstanceId, (Double, Double)] = mutable.Map.empty[InvokerInstanceId, (Double, Double)], // (used, active-used)
   var minuteLoadAvg: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
+  private var nodeMap: mutable.Map[String, ConsistentCacheInvokerNode] = mutable.Map.empty[String, ConsistentCacheInvokerNode],
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -217,6 +218,24 @@ case class RedisAwareLoadBalancerState(
 
   /** Getters for the variables, setting from the outside is only allowed through the update methods below */
   def invokers: IndexedSeq[InvokerHealth] = _invokers
+
+  def locateNode(name: String) : Option[ConsistentCacheInvokerNode] = {
+    val found = nodeMap get name
+    found match {
+      case Some(_) => found
+      case None => {
+        val hashedNode = _consistentHash.locate(name)
+        if (hashedNode.isPresent) {
+          val node = hashedNode.get()
+          nodeMap += (name -> node)
+          Some(node)
+        } else {
+          logging.error(this, s"Unable to locate hashed node for name $name")
+          None
+        }
+      }
+    }
+  }
 
   def updateCPUUsage(invoker: InvokerInstanceId, load: Double, running: Double, runningAndQ: Double, loadAvg: Double) : Unit = {
     cpuLoad += (invoker -> load)
@@ -257,8 +276,11 @@ case class RedisAwareLoadBalancerState(
     }
   }
 
-  def updateTrackingData(node: ConsistentCacheInvokerNode) : Unit = {
-    node.load.incrementAndGet()
+  def updateTrackingData(node: ConsistentCacheInvokerNode, loadStrategy: String) : Unit = {
+      loadStrategy match {
+        case "SimpleLoad" => node.load.incrementAndGet()
+        case _ => None
+      }
   }
 
   def getLoad(node: ConsistentCacheInvokerNode, loadStrategy: String) : Double = {
@@ -314,6 +336,7 @@ case class RedisAwareLoadBalancerState(
     _invokers = newInvokers
     _consistentHash = newHash
     _consistentHashList = List() ++ _consistentHash.getNodes().iterator().asScala
+    nodeMap = mutable.Map.empty[String, ConsistentCacheInvokerNode]
 
     logging.info(this,
       s"loadbalancer invoker status updated. num invokers = ${newSize}, length of _consistentHashList = ${_consistentHashList.size}, invokerCores = ${lbConfig.invoker.cores} c = ${lbConfig.invoker.c}")(

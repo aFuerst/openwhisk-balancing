@@ -33,6 +33,7 @@ import scala.concurrent.Future
 import scala.math.{min}
 import org.apache.commons.math3.distribution.{NormalDistribution, UniformRealDistribution}
 import scala.collection.mutable
+import scala.concurrent.duration._
 
 /**
  * A loadbalancer that schedules workload based on random-forwarding consistent hashing load balancer
@@ -81,6 +82,9 @@ class RandomForwardLoadBalancer(
       Future.failed(LoadBalancerException("No invokers available"))
     }
   }
+
+    actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 5.seconds)(() => RandomForwardLoadBalancer.updatePopularity(schedulingState))
+
 }
 
 object RandomForwardLoadBalancer extends LoadBalancerProvider {
@@ -90,6 +94,8 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
   private val load_range : IndexedSeq[BigDecimal] = Range.BigDecimal(0.0, 10.0, 0.01)
   private val transformed_load : IndexedSeq[Double] = load_range.map(x => distrib.cumulativeProbability(x.doubleValue))
   private var popularity: mutable.Map[String, Integer] = mutable.Map[String, Integer]().withDefaultValue(0)
+  private var popular: mutable.Map[String, Boolean] = mutable.Map[String, Boolean]().withDefaultValue(false)
+  private var ratios: mutable.Map[String, Double] = mutable.Map[String, Double]().withDefaultValue(1.0)
   private var invocations: Integer = 0
 
   override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
@@ -122,11 +128,33 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
       invokerPoolFactory)
   }
 
+
+  def updatePopularity(schedulingState: RedisAwareLoadBalancerState)(implicit logging: Logging) : Unit = {
+    logging.info(this, s"calculating popularity")
+    if (invocations > 0) {
+      var cutoff = 1.0
+      if (schedulingState.runTimes.size > 0) {
+        cutoff = 1.0 / schedulingState.runTimes.size.toDouble
+      }
+
+      var sorted = popularity.toList.sortBy(item => item._2)
+      var state = sorted.iterator.foldLeft("") { (agg, curr) =>
+        val ratio = curr._2.toDouble / invocations.toDouble
+        ratios += (curr._1 -> ratio)
+        popular += (curr._1 -> ratio >= cutoff)
+        agg + s"${curr._1} has '${curr._2}' invokes out of $invocations total for a ratio of $ratio and is popular? ${ratio >= cutoff}; "
+      }
+      logging.info(this, s"popularity cutoff is $cutoff; Popularity state is : $state")
+    }
+  }
+
   def requiredProperties: Map[String, String] = kafkaHosts
 
-  def forwardProbability(load: Double) : Boolean = {
+  def forwardProbability(load: Double, strName: String, invoker: InvokerInstanceId)(implicit logging: Logging, transid: TransactionId) : Boolean = {
     val prob = searchSortedLoad(load)
-    return uniform_distrib.sample() < prob
+    val sample = uniform_distrib.sample()
+    // logging.info(this, s"Randomly choosing to forward function ${strName} from $invoker; With probablilty $sample < $prob = ${sample < prob} due to load $load")(transid)
+    return sample < prob
   }
 
   def searchSortedLoad(load: Double) : Double = {
@@ -138,10 +166,12 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     return transformed_load(transformed_load.size -1)
   }
 
-  def isPopular(schedulingState: RedisAwareLoadBalancerState,name: String) : Boolean = {
-    val pop = popularity(name)
-    val ratio = pop / invocations
-    return ratio > (1 / schedulingState.invokers.size)
+  def isPopular(schedulingState: RedisAwareLoadBalancerState,name: String)(implicit logging: Logging, transid: TransactionId) : Boolean = {
+    val pop = popularity(name).toDouble
+    val ratio : Double = pop / invocations.toDouble
+    val cutoff : Double = 1.0 / schedulingState.runTimes.size.toDouble
+    // logging.info(this, s"checking popularity ${name} $ratio >= $cutoff => ${ratio >= cutoff}")
+    return ratio >= cutoff
   }
 
   /**
@@ -158,49 +188,55 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     algo: String)
     (implicit logging: Logging, transId: TransactionId) : Option[InvokerInstanceId] = {
       
-    // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
+    // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")(transId)
 
     val strName = s"${fqn.namespace}/${fqn.name}"
     invocations += 1
     val func_pop = popularity(strName) + 1
     popularity += (strName -> func_pop)
     if (! isPopular(schedulingState, strName)) {
-      // logging.info(this, s"unpopular function ${strName} :(")
+      // logging.info(this, s"unpopular function ${strName} :(")(transId)
       return getInvokerConsistentCache(fqn, schedulingState, activationId, loadStrategy)
     }
-    // logging.info(this, s"Popular function ${strName}!")
+    // logging.info(this, s"Popular function ${strName}!")(transId)
 
-    val possNode = schedulingState._consistentHash.locate(strName)
+    val possNode = schedulingState.locateNode(strName)
     var chain_len = 0
-    if (possNode.isPresent)
-    {
-      var node = possNode.get()
-      val orig_invoker = node.invoker
-      val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == orig_invoker)
+    possNode match {
+      case Some (foundNode) => {
+        // var node = possNode.get()
+        var node = foundNode
+        val orig_invoker = node.invoker
+        val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == orig_invoker)
 
-      val max_chain = schedulingState.invokers.length
+        val max_chain = schedulingState.invokers.length
 
-      for (i <- 0 to max_chain) {
-        val id = (idx + i) % schedulingState.invokers.length
-        node = schedulingState._consistentHashList(id)
-        val serverLoad = schedulingState.getLoad(node, loadStrategy)
+        for (i <- 0 to max_chain) {
+          val id = (idx + i) % schedulingState.invokers.length
+          node = schedulingState._consistentHashList(id)
+          val serverLoad = schedulingState.getLoad(node, loadStrategy)
 
-        val should_forward = forwardProbability(serverLoad)
-        if (! should_forward) {
-          // logging.info(this, s"Not forwarding from invoker ${node.invoker}, load: ${serverLoad}")
-          schedulingState.updateTrackingData(node)
-          return Some(node.invoker)
+          val should_forward = forwardProbability(serverLoad, strName, node.invoker)
+          if (! should_forward) {
+            if (chain_len > 0) {
+              logging.info(this, s"Activation ${activationId} was pushed ${chain_len} places to ${node.invoker}, from ${orig_invoker}")(transId)
+            }
+            // logging.info(this, s"Not forwarding from invoker ${node.invoker}, load: ${serverLoad}")(transId)
+            schedulingState.updateTrackingData(node, loadStrategy)
+            return Some(node.invoker)
+          }
+          // logging.info(this, s"forwarding from invoker ${node.invoker}, load: ${serverLoad}")(transId)
+          chain_len += 1
         }
-        // logging.info(this, s"forwarding from invoker ${node.invoker}, load: ${serverLoad}")
-        chain_len += 1
+        /* went around enough, give up */
+        if (chain_len > 0) {
+          logging.info(this, s"Activation ${activationId} was pushed full circle ${chain_len} places to ${node.invoker}, from ${orig_invoker}")(transId)
+        }
+        schedulingState.updateTrackingData(node, loadStrategy)
+        return Some(node.invoker)
       }
-      /* went around enough, give up */
-      if (chain_len > 0) {
-        logging.info(this, s"Activation ${activationId} was pushed ${chain_len} places to ${node.invoker}, from ${orig_invoker}")
-      }
-      return Some(node.invoker)
+      case None => None
     }
-     else None
   }
 
   def getInvokerConsistentCache(
@@ -210,44 +246,46 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     loadStrategy: String) : Option[InvokerInstanceId] = {
     
     val strName = s"${fqn.namespace}/${fqn.name}"
-    val possNode = schedulingState._consistentHash.locate(strName)
-    if (possNode.isPresent)
-    {
-      var original_node = possNode.get()
-      val orig_serverLoad = schedulingState.getLoad(original_node, loadStrategy)
-      var node = original_node
-      val loadCuttoff = schedulingState.getLoadCutoff(loadStrategy)
+    val possNode = schedulingState.locateNode(strName) //_consistentHash.locate(strName)
+    // if (possNode.isPresent)
+    possNode match {
+      case Some (foundNode) => {
+        var original_node = foundNode
+        val orig_serverLoad = schedulingState.getLoad(original_node, loadStrategy)
+        var node = original_node
+        val loadCuttoff = schedulingState.getLoadCutoff(loadStrategy)
 
-      val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
-      val chainLen = schedulingState.invokers.length // min(_invokers.length, loadCuttoff).toInt
-      var times = schedulingState.runTimes.getOrElse(strName, (0.0, 0.0))
-      var r: Double = 2.2
-      if (times._1 != 0.0) {
-        r = times._2 / times._1
-        r = min(r, 2.2)
-      }
-
-      for (i <- 0 to chainLen) {
-        var id = (idx + i) % schedulingState.invokers.length
-        node = schedulingState._consistentHashList(id)
-        val serverLoad = schedulingState.getLoad(node, loadStrategy)
-
-        if (serverLoad <= loadCuttoff) {
-          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
-          /* assign load to node */
-          schedulingState.updateTrackingData(node)
-          return Some(node.invoker)
+        val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
+        val chainLen = schedulingState.invokers.length // min(_invokers.length, loadCuttoff).toInt
+        var times = schedulingState.runTimes.getOrElse(strName, (0.0, 0.0))
+        var r: Double = 2.2
+        if (times._1 != 0.0) {
+          r = times._2 / times._1
+          r = min(r, 2.2)
         }
-        else if (serverLoad <= r-1) {
-          // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
-          schedulingState.updateTrackingData(node)
-          return Some(node.invoker)
+
+        for (i <- 0 to chainLen) {
+          var id = (idx + i) % schedulingState.invokers.length
+          node = schedulingState._consistentHashList(id)
+          val serverLoad = schedulingState.getLoad(node, loadStrategy)
+
+          if (serverLoad <= loadCuttoff) {
+            // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node under cutoff ${node.invoker}")
+            /* assign load to node */
+            schedulingState.updateTrackingData(node, loadStrategy)
+            return Some(node.invoker)
+          }
+          else if (serverLoad <= r-1) {
+            // logging.info(this, s"Invoker ${original_node.invoker} overloaded with $orig_serverLoad, assigning work to node with load under $r - 1 ${node.invoker}")
+            schedulingState.updateTrackingData(node, loadStrategy)
+            return Some(node.invoker)
+          }
         }
+        /* went around enough, give up */
+        schedulingState.updateTrackingData(node, loadStrategy)
+        return Some(node.invoker)
       }
-      /* went around enough, give up */
-      schedulingState.updateTrackingData(node)
-      return Some(node.invoker)
+      case None => None
     }
-    else None
   }
 }
