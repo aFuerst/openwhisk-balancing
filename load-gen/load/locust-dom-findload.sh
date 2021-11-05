@@ -24,7 +24,7 @@ ansible=/home/ow/openwhisk-caching/ansible
 r=20
 warmup=$(($USERS/$r))
 echo "users: $USERS; warmup seconds: $warmup"
-pth="vary_users/random-forward/$USERS-users"
+pth="vary_users/random-forward-dom/$USERS-users"
 mkdir -p $pth
 user='ow'
 pw='OwUser'

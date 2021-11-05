@@ -14,7 +14,7 @@ trace_len_sec = 60*10
 
 def _toWeightedData(action_dict):
   sorted_cold_times = sorted(wsk_interact.cold_times, reverse=True)
-  freqs = [action.freq_class - sorted_cold_times.index(action.coldtime) for action in action_dict.values()]
+  freqs = [action.freq_class for action in action_dict.values()]
   acts = list(action_dict.values())
   return acts, freqs
 

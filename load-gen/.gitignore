@@ -26,4 +26,4 @@ load/testlocust/
 load/transaction/
 load/vary_users/
 
-analysis/*png
+analysis/**/*png

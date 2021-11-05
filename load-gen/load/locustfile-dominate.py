@@ -27,9 +27,9 @@ for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, 
     url = add_web_action(name, path, container, memory=memory, host=host)
     action_dict[name] = Action(name, url, warm_time, cold_time, freq)
 
+action_dict["aes_110"].freq_class = 300
+action_dict["gzip_110"].freq_class = 300
 acts, freqs = little._toWeightedData(action_dict)
-
-
 
 
 class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
