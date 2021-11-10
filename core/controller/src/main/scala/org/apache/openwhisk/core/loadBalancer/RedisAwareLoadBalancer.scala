@@ -329,7 +329,14 @@ case class RedisAwareLoadBalancerState(
     newInvokers.map { invoker => 
       
       val currentLoad: Option[AtomicInteger] = _consistentHashList.find(p => p.invoker == invoker.id).map { _.load }
-      newHash.add(new ConsistentCacheInvokerNode(invoker.id, currentLoad))
+      if (invoker.status.isUsable) {
+        newHash.add(new ConsistentCacheInvokerNode(invoker.id, currentLoad))
+      }
+      else {
+        logging.warn(this,
+          s"not adding unusable invoker to consistent hash: $invoker")(
+          TransactionId.loadbalancer)        
+      }
     
     } // .toString()
 
