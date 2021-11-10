@@ -132,16 +132,17 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
   def updatePopularity(schedulingState: RedisAwareLoadBalancerState)(implicit logging: Logging) : Unit = {
     logging.info(this, s"calculating popularity")
     if (invocations > 0) {
-      var cutoff = 1.0
+      var cutoff : Double = 1.0
       if (schedulingState.runTimes.size > 0) {
         cutoff = 1.0 / schedulingState.runTimes.size.toDouble
       }
 
       var sorted = popularity.toList.sortBy(item => item._2)
       var state = sorted.iterator.foldLeft("") { (agg, curr) =>
-        val ratio = curr._2.toDouble / invocations.toDouble
+        val ratio : Double = curr._2.toDouble / invocations.toDouble
         ratios += (curr._1 -> ratio)
-        popular += (curr._1 -> ratio >= cutoff)
+        val pop = ratio >= cutoff
+        popular += (curr._1 -> pop)
         agg + s"${curr._1} has '${curr._2}' invokes out of $invocations total for a ratio of $ratio and is popular? ${ratio >= cutoff}; "
       }
       logging.info(this, s"popularity cutoff is $cutoff; Popularity state is : $state")

@@ -306,7 +306,7 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
             actorRunning += (actor -> r.action)
 
             if (newData.activeActivationCount < 1) {
-              logging.error(this, s"invalid activation count < 1 ${newData}")
+              logging.error(this, s"invalid activation count < 1 ${newData}")(r.msg.transid)
             }
             // var i = (activeActionCount get r.action).getOrElse(0L)
 
@@ -330,16 +330,16 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
               }
             }
             else {
-              logging.error(this, s"unknown container state $containerState")
+              logging.error(this, s"unknown container state $containerState")(r.msg.transid)
             }
-            logging.info(this, s"cold hits: $coldHits, warm hits:$warmHits, cold mapits: $coldHitsAct, warm map: $warmHitsAct")
+            logging.info(this, s"cold hits: $coldHits, warm hits:$warmHits, cold mapits: $coldHitsAct, warm map: $warmHitsAct")(r.msg.transid)
             
             //only move to busyPool if max reached
             if (!newData.hasCapacity()) {
               if (r.action.limits.concurrency.maxConcurrent > 1) {
                 logging.info(
                   this,
-                  s"container ${container} is now busy with ${newData.activeActivationCount} activations")
+                  s"container ${container} is now busy with ${newData.activeActivationCount} activations")(r.msg.transid)
               }
               busyPool = busyPool + (actor -> newData)
               freePool = freePool - actor
@@ -731,6 +731,11 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
 
   private def updateController(instance: InvokerInstanceId) = {
     try {
+      val out = new mutable.ListBuffer[String]
+      val err = new mutable.ListBuffer[String]
+      val args = Seq("vmstat", "1", "2", "-n", "-w")
+      val process = args.run(ProcessLogger(o => out += o, e => err += e))
+
       val redisClient = new Jedis(poolConfig.redis.ip, poolConfig.redis.port)
       redisClient.auth(poolConfig.redis.password)
       
@@ -754,18 +759,45 @@ class ContainerPool(childFactory: ActorRefFactory => ActorRef,
       val firstComma = justLoads.indexOf(",")
       val loadAvg = justLoads.substring(0,firstComma).toDouble
 
+      var us, sy, id, wa, st = -1
       // val loadAvg = uptimeResult.split(",")(3).split(":")(1).toDouble
+      process.exitValue() match {
+        case 0 => {
+          logging.info(this, s"vmstat data: $out")(TransactionId.invokerRedis)
+          var sep = out(3).split("\\s+")
+          if (sep.size == 18) {
+            // logging.info(this, s"vmstat length 18")
+            us = sep(13).toInt
+            sy = sep(14).toInt
+            id = sep(15).toInt
+            wa = sep(16).toInt
+            st = sep(17).toInt
+          }
+          else if (sep.size == 17) {
+            // logging.info(this, s"vmstat length 17")
+            us = sep(12).toInt
+            sy = sep(13).toInt
+            id = sep(14).toInt
+            wa = sep(15).toInt
+            st = sep(16).toInt
+          }
+          else {
+            logging.error(this, s"Unexpected sep size of ${sep.size} ${sep.toString}")(TransactionId.invokerRedis)
+          } 
+        }
+        case _ => logging.error(this, s"Could not run vmstat $err")(TransactionId.invokerRedis)
+      }
 
-      var packet = new RedisPacket(data, containerActiveMem, usedMem, running, runAndQ, cpuLoad, loadAvg)
+      var packet = new RedisPacket(data, containerActiveMem, usedMem, running, runAndQ, cpuLoad, loadAvg, us, sy, id, wa, st)
       val sendJson = packet.toJson.compactPrint
       redisClient.set(s"${instance.instance}/packet", sendJson)
 
-      logging.info(this, s"Updated data in Redis data: $sendJson")
+      logging.info(this, s"Updated data in Redis data: $sendJson")(TransactionId.invokerRedis)
     } catch {
-        case e: redis.clients.jedis.exceptions.JedisDataException => logging.warn(this, s"Failed to log into redis server, $e")
+        case e: redis.clients.jedis.exceptions.JedisDataException => logging.warn(this, s"Failed to log into redis server, $e")(TransactionId.invokerRedis)
         case scala.util.control.NonFatal(t) => {
           var trace = t.getStackTrace.map { trace => trace.toString() }.mkString("\n")
-          logging.error(this, s"Unknonwn error, '$t', at ${trace}")
+          logging.error(this, s"Unknonwn error, '$t', at ${trace}")(TransactionId.invokerRedis)
         } 
     }
   }

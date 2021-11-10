@@ -26,6 +26,8 @@ ENV UID=1001 \
 
 
 RUN apk add --update openssl
+# add vmstat
+RUN apk add procps
 
 # Uncomment to fetch latest version of docker instead: RUN wget -qO- https://get.docker.com | sh
 # Install docker client
