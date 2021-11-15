@@ -1,0 +1,2 @@
+172.29.200.161 - - [11/Nov/2021:21:58:32 +0000] [#tid_db235ae3e9e57c397cc8e52a558722da] GET /cli/go/download/linux/amd64/wsk HTTP/1.1 301 162 - ansible-httpget -
+172.29.200.161 - - [11/Nov/2021:21:58:32 +0000] [#tid_eba47b54e16af9f64af5d47459db9054] GET /cli/linux/amd64/wsk HTTP/1.1 200 13595227 - ansible-httpget -

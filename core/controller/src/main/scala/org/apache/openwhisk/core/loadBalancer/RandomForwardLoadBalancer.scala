@@ -33,7 +33,7 @@ import scala.concurrent.Future
 import scala.math.{min}
 import org.apache.commons.math3.distribution.{NormalDistribution, UniformRealDistribution}
 import scala.collection.mutable
-import scala.concurrent.duration._
+// import scala.concurrent.duration._
 import java.util.concurrent.atomic.LongAdder
 
 /**
@@ -84,7 +84,12 @@ class RandomForwardLoadBalancer(
     }
   }
 
-    actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 5.seconds)(() => RandomForwardLoadBalancer.updatePopularity(schedulingState))
+  override protected def customUpdate() : Unit = {
+    RandomForwardLoadBalancer.updateInvokerLoad(schedulingState, lbConfig.loadStrategy)
+    RandomForwardLoadBalancer.updatePopularity(schedulingState)
+  }
+
+  // actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 5.seconds)(() => RandomForwardLoadBalancer.updatePopularity(schedulingState, lbConfig.loadStrategy))
 }
 
 object RandomForwardLoadBalancer extends LoadBalancerProvider {
@@ -92,7 +97,8 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
   private val distrib : NormalDistribution = new NormalDistribution(0.5, 0.1)
   private val uniform_distrib : UniformRealDistribution = new UniformRealDistribution(0.0, 1.0)
   private val load_range : IndexedSeq[BigDecimal] = Range.BigDecimal(0.0, 10.0, 0.01)
-  private val transformed_load : IndexedSeq[Double] = load_range.map(x => distrib.cumulativeProbability(x.doubleValue))
+  private val transformed_load_range : IndexedSeq[Double] = load_range.map(x => distrib.cumulativeProbability(x.doubleValue))
+  private val invoker_transformed_loads : mutable.Map[InvokerInstanceId, Double] = mutable.Map[InvokerInstanceId, Double]().withDefaultValue(0.0)
   private var popularity: mutable.Map[String, LongAdder] = mutable.Map[String, LongAdder]().withDefaultValue(new LongAdder())
   private var popular: mutable.Map[String, Boolean] = mutable.Map[String, Boolean]().withDefaultValue(false)
   private var ratios: mutable.Map[String, Double] = mutable.Map[String, Double]().withDefaultValue(1.0)
@@ -128,8 +134,17 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
       invokerPoolFactory)
   }
 
+  def updateInvokerLoad(schedulingState: RedisAwareLoadBalancerState, loadStrategy: String)(implicit logging: Logging) : Unit = {
+    logging.info(this, s"updating invoker load")(TransactionId.invokerRedis)
+    schedulingState.invokers.map { invoker =>
+      val serverLoad = schedulingState.getLoad(invoker.id, loadStrategy)
+      invoker_transformed_loads += (invoker.id -> searchSortedLoad(serverLoad))
+    }
+  }
+
   def updatePopularity(schedulingState: RedisAwareLoadBalancerState)(implicit logging: Logging) : Unit = {
-    logging.info(this, s"calculating popularity")
+    logging.info(this, s"calculating popularity")(TransactionId.invokerRedis)
+
     val actsLong = totalActivations.longValue.toDouble
     if (actsLong > 0) {
       var cutoff : Double = 1.0
@@ -151,6 +166,12 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
 
   def requiredProperties: Map[String, String] = kafkaHosts
 
+  def forwardProbability(invoker: InvokerInstanceId)(implicit logging: Logging, transid: TransactionId) : Boolean = {
+    val prob = invoker_transformed_loads(invoker)
+    val sample = uniform_distrib.sample()
+    return sample < prob
+  }
+
   def forwardProbability(load: Double, strName: String, invoker: InvokerInstanceId)(implicit logging: Logging, transid: TransactionId) : Boolean = {
     val prob = searchSortedLoad(load)
     val sample = uniform_distrib.sample()
@@ -161,18 +182,19 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
   def searchSortedLoad(load: Double) : Double = {
     for (i <- 0 to load_range.size) {
       if (load_range(i) > load) {
-        return transformed_load(i-1)
+        return transformed_load_range(i-1)
       }
     }
-    return transformed_load(transformed_load.size -1)
+    return transformed_load_range(transformed_load_range.size -1)
   }
 
   def isPopular(schedulingState: RedisAwareLoadBalancerState,name: String)(implicit logging: Logging, transid: TransactionId) : Boolean = {
-    val pop = popularity(name).longValue.toDouble
-    val ratio : Double = pop / totalActivations.longValue
-    val cutoff : Double = 1.0 / schedulingState.runTimes.size.toDouble
-    // logging.info(this, s"checking popularity ${name} $ratio >= $cutoff => ${ratio >= cutoff}")
-    return ratio >= cutoff
+    return popular(name)
+    // val pop = popularity(name).longValue.toDouble
+    // val ratio : Double = pop / totalActivations.longValue
+    // val cutoff : Double = 1.0 / schedulingState.runTimes.size.toDouble
+    // // logging.info(this, s"checking popularity ${name} $ratio >= $cutoff => ${ratio >= cutoff}")
+    // return ratio >= cutoff
   }
 
   /**
@@ -214,9 +236,10 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         for (i <- 0 to max_chain) {
           val id = (idx + i) % schedulingState.invokers.length
           node = schedulingState._consistentHashList(id)
-          val serverLoad = schedulingState.getLoad(node, loadStrategy)
+          // val serverLoad = schedulingState.getLoad(node, loadStrategy)
 
-          val should_forward = forwardProbability(serverLoad, strName, node.invoker)
+          // val should_forward = forwardProbability(serverLoad, strName, node.invoker)
+          val should_forward = forwardProbability(node.invoker)
           if (! should_forward) {
             if (chain_len > 0) {
               logging.info(this, s"Activation ${activationId} was pushed ${chain_len} places to ${node.invoker}, from ${orig_invoker}")(transId)

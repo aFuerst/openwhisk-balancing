@@ -19,8 +19,7 @@ def plot(path, metric):
   fig, ax = plt.subplots()
   plt.tight_layout()
   fig.set_size_inches(5,3)
-  time_min = datetime(2050, 1, 1, tzinfo=None)
-  limit=datetime(1970, 1, 1, tzinfo=None)
+  time_min=datetime(1970, 1, 1, tzinfo=None)
   colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:olive"]
   mean_df = None
   save_pth = path
@@ -53,9 +52,10 @@ def plot(path, metric):
     df = pd.DataFrame.from_records(file_data, index="time")
     df = df[df["usedMem"] > 128.0]
     df = df.resample("S").mean().interpolate()
+    df.index = df.index - (df.index[0] - time_min)
     ax.plot(df.index, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
-    limit = max(limit, df.index[-1])
-    time_min = min(time_min, df.index[0])
+    # limit = max(limit, df.index[-1])
+    # time_min = min(time_min, df.index[0])
     # print(df) #.describe())
 
     # print(mean_df)
@@ -69,7 +69,7 @@ def plot(path, metric):
       mean_df = mean_df.join(renamed[[new_col]])
 
   if "mem" in metric.lower():
-    ax.hlines(40*1024, time_min, limit, color='red')
+    ax.hlines(10*1024, time_min, mean_df.index[-1], color='red')
   mean_df["present"] = mean_df.notnull().sum(axis=1)
   mean_df["mean"] = mean_df.sum(axis=1) / mean_df.notnull().sum(axis=1)
 

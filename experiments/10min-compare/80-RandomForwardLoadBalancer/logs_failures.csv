@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences
+GET,/api/v1/web/afuerst/default/cnn_150,400 Client Error: Bad Request for url: https://172.29.200.161:10001/api/v1/web/afuerst/default/cnn_150,6
+GET,/api/v1/web/afuerst/default/cnn_100,400 Client Error: Bad Request for url: https://172.29.200.161:10001/api/v1/web/afuerst/default/cnn_100,2
+GET,/api/v1/web/afuerst/default/cnn_75,400 Client Error: Bad Request for url: https://172.29.200.161:10001/api/v1/web/afuerst/default/cnn_75,1

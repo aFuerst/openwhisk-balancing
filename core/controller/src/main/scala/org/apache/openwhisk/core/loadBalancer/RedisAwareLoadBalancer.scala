@@ -148,6 +148,10 @@ abstract class RedisAwareLoadBalancer(
       schedulingState.stateReleaseInvoker(invoker, entry)
   }
 
+  protected def customUpdate() : Unit = {
+
+  }
+
   override protected def updateActionTimes() = {
     try {
       val r = new Jedis(lbConfig.redis.ip, lbConfig.redis.port)
@@ -169,6 +173,8 @@ abstract class RedisAwareLoadBalancer(
           case None =>  logging.warn(this, s"Could not get redis packet for invoker $id")
         }
       }
+      
+      customUpdate()
     } catch {
         case e: redis.clients.jedis.exceptions.JedisDataException => logging.warn(this, s"Failed to log into redis server, $e")
         case scala.util.control.NonFatal(t) => {
@@ -283,6 +289,21 @@ case class RedisAwareLoadBalancerState(
       }
   }
 
+  def getLoad(invoker: InvokerInstanceId, loadStrategy: String) : Double = {
+    loadStrategy match {
+      case "Running" => runningLoad.getOrElse(invoker, 0.0)
+      case "RAndQ" => runningAndQLoad.getOrElse(invoker, 0.0)
+      case "CPU" => cpuLoad.getOrElse(invoker, 0.0)
+      case "UsedMem" => memLoad.getOrElse(invoker, (0.0, 0.0))._1
+      case "ActiveMem" => memLoad.getOrElse(invoker, (0.0, 0.0))._2
+      case "LoadAvg" => minuteLoadAvg.getOrElse(invoker, 0.0)  / lbConfig.invoker.cores
+      case _ => {
+        logging.error(this, s"getLoad: Unsupported loadbalancing strat ${loadStrategy}")
+        2.0
+      }
+    }
+  }
+
   def getLoad(node: ConsistentCacheInvokerNode, loadStrategy: String) : Double = {
     loadStrategy match {
       case "SimpleLoad" => node.load.doubleValue() / lbConfig.invoker.cores
@@ -313,6 +334,10 @@ case class RedisAwareLoadBalancerState(
         2.0
       }
     }
+  }
+
+  protected def wakeUpInvoker() : Future[Unit] = {
+    return Future.successful(())
   }
 
   /**

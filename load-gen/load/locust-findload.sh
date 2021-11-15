@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=322bb0cc-73f5-424f-a360-793e13b9225b:KEU6wRDzHVutOOtYjgqnVqAhCvlEmC8ZhRRTIfLUPwN4cfX9paygM0ksubrjAbHL
+export AUTH=f2e73d1d-58cf-4e57-9847-8bc9320b54a8:3sarpHMfRUAAo3Q90feIzukEDoc5pmhy7XQ1x7cT1xgEiQQ0ijB52F0MZFqfUBtW
 
 USERS=100
 for USERS in {100..500..50}
@@ -68,5 +68,6 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
 
 python3 ../analysis/plot_invoker_load.py $pth $USERS
 python3 ../analysis/plot_invocations.py $pth $USERS
+python3 ../analysis/map_invocation_to_load.py $pth $USERS
 done
 # done

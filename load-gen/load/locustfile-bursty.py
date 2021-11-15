@@ -18,25 +18,37 @@ class Action:
     self.warmtime = warmtime
     self.freq_class = freq_class
 
+  def __str__(self) -> str:
+      return "{}, {}".format(self.name, self.freq_class)
+
 set_properties(host=host, auth=auth)
 normal_action_dict = {}
 bursty_action_dict = {}
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
   path = os.path.join("../ow-actions", zip_file)
-  for freq in [40, 75, 100, 110]:
+  for freq in [40, 75, 100, 150]:
     name = action_name + "_" + str(freq)
-    # url = add_web_action(name, path, container, memory=memory, host=host)
+    url = add_web_action(name, path, container, memory=memory, host=host)
     url  = ""
     normal_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
 
-bursty_action_dict = copy.deepcopy(normal_action_dict)
-bursty_action_dict["aes_110"].freq_class = 500
-bursty_action_dict["gzip_110"].freq_class = 500
+for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
+  path = os.path.join("../ow-actions", zip_file)
+  for freq in [40, 75, 100, 150]:
+    if (action_name == "aes" or action_name == "gzip") and freq == 150:
+      freq = 500
+    name = action_name + "_" + str(freq)
+    url = add_web_action(name, path, container, memory=memory, host=host)
+    url  = ""
+    bursty_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
+
+# bursty_action_dict = copy.deepcopy(normal_action_dict)
+# bursty_action_dict["aes_110"].freq_class = 500
+# bursty_action_dict["gzip_110"].freq_class = 500
 acts, normal_freqs = little._toWeightedData(normal_action_dict)
 _, bursty_freqs = little._toWeightedData(bursty_action_dict)
 freqs = normal_freqs
-
 
 
 class TransactionalWaitForFunctionCoplete(SequentialTaskSet):

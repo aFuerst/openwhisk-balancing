@@ -25,5 +25,6 @@ run-scripts/logs/
 load/testlocust/
 load/transaction/
 load/vary_users/
+load/compare/
 
 analysis/**/*png

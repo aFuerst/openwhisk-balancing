@@ -1,0 +1,1390 @@
+host-distrib
+
+PLAY [zookeepers] **************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:26:35 +0000 (0:00:00.022)       0:00:00.022 ******* 
+ok: [kafka0]
+
+TASK [zookeeper : (re)start zookeeper] *****************************************
+Friday 12 November 2021  18:26:36 +0000 (0:00:01.572)       0:00:01.594 ******* 
+skipping: [kafka0]
+
+TASK [zookeeper : wait until the Zookeeper in this host is up and running] *****
+Friday 12 November 2021  18:26:37 +0000 (0:00:00.068)       0:00:01.663 ******* 
+skipping: [kafka0]
+
+TASK [zookeeper : remove old zookeeper] ****************************************
+Friday 12 November 2021  18:26:37 +0000 (0:00:00.059)       0:00:01.722 ******* 
+ok: [kafka0]
+
+TASK [zookeeper : remove zookeeper] ********************************************
+Friday 12 November 2021  18:26:38 +0000 (0:00:00.989)       0:00:02.712 ******* 
+changed: [kafka0]
+
+PLAY [kafkas] ******************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:26:40 +0000 (0:00:02.340)       0:00:05.053 ******* 
+ok: [kafka0]
+
+TASK [kafka : create kafka certificate directory] ******************************
+Friday 12 November 2021  18:26:41 +0000 (0:00:01.322)       0:00:06.375 ******* 
+skipping: [kafka0]
+
+TASK [kafka : copy keystore] ***************************************************
+Friday 12 November 2021  18:26:41 +0000 (0:00:00.070)       0:00:06.446 ******* 
+skipping: [kafka0]
+
+TASK [kafka : add kafka default env vars] **************************************
+Friday 12 November 2021  18:26:41 +0000 (0:00:00.067)       0:00:06.513 ******* 
+skipping: [kafka0]
+
+TASK [kafka : add kafka non-ssl vars] ******************************************
+Friday 12 November 2021  18:26:41 +0000 (0:00:00.062)       0:00:06.575 ******* 
+skipping: [kafka0]
+
+TASK [kafka : add kafka ssl env vars] ******************************************
+Friday 12 November 2021  18:26:41 +0000 (0:00:00.059)       0:00:06.634 ******* 
+skipping: [kafka0]
+
+TASK [kafka : join kafka ssl env vars] *****************************************
+Friday 12 November 2021  18:26:42 +0000 (0:00:00.059)       0:00:06.694 ******* 
+skipping: [kafka0]
+
+TASK [kafka : join kafka non-ssl env vars] *************************************
+Friday 12 November 2021  18:26:42 +0000 (0:00:00.063)       0:00:06.757 ******* 
+skipping: [kafka0]
+
+TASK [kafka : (re)start kafka using 'wurstmeister/kafka:2.13-2.7.0'] ***********
+Friday 12 November 2021  18:26:42 +0000 (0:00:00.098)       0:00:06.856 ******* 
+skipping: [kafka0]
+
+TASK [kafka : wait until the kafka server started up] **************************
+Friday 12 November 2021  18:26:42 +0000 (0:00:00.037)       0:00:06.894 ******* 
+skipping: [kafka0]
+
+TASK [kafka : remove old kafka] ************************************************
+Friday 12 November 2021  18:26:42 +0000 (0:00:00.039)       0:00:06.933 ******* 
+ok: [kafka0]
+
+TASK [kafka : remove kafka] ****************************************************
+Friday 12 November 2021  18:26:42 +0000 (0:00:00.668)       0:00:07.602 ******* 
+changed: [kafka0]
+
+PLAY [controllers] *************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:26:55 +0000 (0:00:12.088)       0:00:19.690 ******* 
+ok: [controller0]
+
+TASK [controller : docker login] ***********************************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:01.258)       0:00:20.948 ******* 
+skipping: [controller0]
+
+TASK [controller : get controller name and index] ******************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.050)       0:00:20.999 ******* 
+skipping: [controller0]
+
+TASK [controller : pull the latest image of controller] ************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.042)       0:00:21.041 ******* 
+skipping: [controller0]
+
+TASK [controller : ensure controller log directory is created with permissions] ***
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.037)       0:00:21.079 ******* 
+skipping: [controller0]
+
+TASK [controller : ensure controller log file is created with permissions] *****
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.040)       0:00:21.119 ******* 
+skipping: [controller0]
+
+TASK [controller : ensure controller config directory is created with permissions] ***
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.039)       0:00:21.158 ******* 
+skipping: [controller0]
+
+TASK [controller : copy jmxremote password file] *******************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.088)       0:00:21.247 ******* 
+skipping: [controller0]
+
+TASK [controller : copy jmxremote access file] *********************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.038)       0:00:21.286 ******* 
+skipping: [controller0]
+
+TASK [controller : copy kafka truststore/keystore] *****************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.036)       0:00:21.323 ******* 
+skipping: [controller0]
+
+TASK [controller : copy nginx certificate keystore] ****************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.032)       0:00:21.355 ******* 
+skipping: [controller0]
+
+TASK [controller : copy certificates] ******************************************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.087)       0:00:21.443 ******* 
+skipping: [controller0] => (item=controller-openwhisk-server-cert.pem) 
+skipping: [controller0] => (item=controller-openwhisk-server-key.pem) 
+
+TASK [controller : check, that required databases exist] ***********************
+Friday 12 November 2021  18:26:56 +0000 (0:00:00.188)       0:00:21.632 ******* 
+skipping: [controller0] => (item=whisk_local_whisks) 
+skipping: [controller0] => (item=whisk_local_subjects) 
+skipping: [controller0] => (item=whisk_local_activations) 
+
+TASK [controller : prepare controller port] ************************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.111)       0:00:21.743 ******* 
+skipping: [controller0]
+
+TASK [controller : expose additional ports if jmxremote is enabled] ************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.034)       0:00:21.778 ******* 
+skipping: [controller0]
+
+TASK [controller : Load config from template] **********************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.032)       0:00:21.810 ******* 
+skipping: [controller0]
+
+TASK [controller : populate environment variables for controller] **************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.037)       0:00:21.847 ******* 
+skipping: [controller0]
+
+TASK [controller : merge extra env variables] **********************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.036)       0:00:21.884 ******* 
+skipping: [controller0]
+
+TASK [controller : setup elasticsearch activation store env] *******************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.032)       0:00:21.916 ******* 
+skipping: [controller0]
+
+TASK [controller : merge elasticsearch activation store env] *******************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.035)       0:00:21.951 ******* 
+skipping: [controller0]
+
+TASK [controller : setup mongodb artifact store env] ***************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.032)       0:00:21.983 ******* 
+skipping: [controller0]
+
+TASK [controller : merge mongodb artifact store env] ***************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.036)       0:00:22.020 ******* 
+skipping: [controller0]
+
+TASK [controller : populate volumes for controller] ****************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.032)       0:00:22.052 ******* 
+skipping: [controller0]
+
+TASK [controller : check if coverage collection is enabled] ********************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.031)       0:00:22.084 ******* 
+skipping: [controller0]
+
+TASK [controller : ensure controller coverage directory is created with permissions] ***
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.035)       0:00:22.120 ******* 
+skipping: [controller0] => (item=controller) 
+skipping: [controller0] => (item=common) 
+
+TASK [controller : extend controller volume for coverage] **********************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.055)       0:00:22.175 ******* 
+skipping: [controller0]
+
+TASK [controller : include plugins] ********************************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.032)       0:00:22.207 ******* 
+skipping: [controller0] => (item=join_akka_cluster) 
+
+TASK [controller : lean controller setup] **************************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.042)       0:00:22.250 ******* 
+skipping: [controller0]
+
+TASK [controller : (re)start controller] ***************************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.033)       0:00:22.283 ******* 
+skipping: [controller0]
+
+TASK [controller : wait until the Controller in this host is up and running] ***
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.033)       0:00:22.317 ******* 
+skipping: [controller0]
+
+TASK [controller : get controller name] ****************************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.037)       0:00:22.355 ******* 
+ok: [controller0]
+
+TASK [controller : remove controller] ******************************************
+Friday 12 November 2021  18:26:57 +0000 (0:00:00.045)       0:00:22.400 ******* 
+ok: [controller0]
+
+TASK [controller : remove controller log directory] ****************************
+Friday 12 November 2021  18:26:58 +0000 (0:00:00.593)       0:00:22.993 ******* 
+changed: [controller0]
+
+TASK [controller : remove controller conf directory] ***************************
+Friday 12 November 2021  18:26:58 +0000 (0:00:00.553)       0:00:23.547 ******* 
+changed: [controller0]
+
+PLAY [invokers] ****************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:26:59 +0000 (0:00:00.444)       0:00:23.992 ******* 
+ok: [invoker0]
+ok: [invoker1]
+ok: [invoker2]
+ok: [invoker4]
+ok: [invoker3]
+ok: [invoker6]
+ok: [invoker5]
+ok: [invoker7]
+
+TASK [invoker : docker login] **************************************************
+Friday 12 November 2021  18:27:03 +0000 (0:00:04.188)       0:00:28.180 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : get invoker name and index] ************************************
+Friday 12 November 2021  18:27:03 +0000 (0:00:00.180)       0:00:28.361 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : pull invoker image with tag latest] ****************************
+Friday 12 November 2021  18:27:03 +0000 (0:00:00.245)       0:00:28.606 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : pull runtime action images per manifest] ***********************
+Friday 12 November 2021  18:27:04 +0000 (0:00:00.190)       0:00:28.797 ******* 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v12', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-nodejs-v14', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-python-v3.7', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'python3aiaction', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-ai-vid', 'tag': 'latest'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'alfuerst', 'name': 'wsk-python-lookbusy', 'tag': 'latest'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v4.2', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.1', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.3', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-swift-v5.4', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'java8action', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.3', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-php-v7.4', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-php-v8.0', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-ruby-v2.5', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-golang-v1.15', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v2.2', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-dotnet-v3.1', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-ballerina-v0.990.2', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'action-rust-v1.34', 'tag': 'nightly'}) 
+
+TASK [invoker : pull blackboxes action images per manifest] ********************
+Friday 12 November 2021  18:27:04 +0000 (0:00:00.473)       0:00:29.270 ******* 
+skipping: [invoker0] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+skipping: [invoker1] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+skipping: [invoker2] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+skipping: [invoker3] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+skipping: [invoker4] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+skipping: [invoker5] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+skipping: [invoker6] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+skipping: [invoker7] => (item={'prefix': 'openwhisk', 'name': 'dockerskeleton', 'tag': 'nightly'}) 
+
+TASK [invoker : determine docker root dir on docker-machine] *******************
+Friday 12 November 2021  18:27:04 +0000 (0:00:00.195)       0:00:29.466 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : set_fact] ******************************************************
+Friday 12 November 2021  18:27:05 +0000 (0:00:00.186)       0:00:29.652 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : determine docker root dir] *************************************
+Friday 12 November 2021  18:27:05 +0000 (0:00:00.190)       0:00:29.842 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : set_fact] ******************************************************
+Friday 12 November 2021  18:27:05 +0000 (0:00:00.195)       0:00:30.037 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : ensure invoker log directory is created with permissions] ******
+Friday 12 November 2021  18:27:05 +0000 (0:00:00.196)       0:00:30.234 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : ensure invoker config directory is created with permissions] ***
+Friday 12 November 2021  18:27:05 +0000 (0:00:00.227)       0:00:30.461 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : copy kafka truststore/keystore] ********************************
+Friday 12 November 2021  18:27:06 +0000 (0:00:00.372)       0:00:30.834 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : copy keystore, key and cert] ***********************************
+Friday 12 November 2021  18:27:06 +0000 (0:00:00.183)       0:00:31.018 ******* 
+skipping: [invoker0] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker3] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker4] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker1] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker2] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker0] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker3] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker4] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker2] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker0] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+skipping: [invoker1] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker4] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+skipping: [invoker3] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+skipping: [invoker2] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+skipping: [invoker1] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+skipping: [invoker5] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker6] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker7] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-keystore.p12) 
+skipping: [invoker5] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker6] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker7] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-key.pem) 
+skipping: [invoker5] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+skipping: [invoker6] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+skipping: [invoker7] => (item=/home/ow/openwhisk-caching/ansible/../ansible/roles/invoker/files/invoker-openwhisk-server-cert.pem) 
+
+TASK [invoker : check, that required databases exist] **************************
+Friday 12 November 2021  18:27:07 +0000 (0:00:00.766)       0:00:31.784 ******* 
+skipping: [invoker1] => (item=whisk_local_whisks) 
+skipping: [invoker1] => (item=whisk_local_activations) 
+skipping: [invoker2] => (item=whisk_local_whisks) 
+skipping: [invoker0] => (item=whisk_local_whisks) 
+skipping: [invoker2] => (item=whisk_local_activations) 
+skipping: [invoker0] => (item=whisk_local_activations) 
+skipping: [invoker4] => (item=whisk_local_whisks) 
+skipping: [invoker4] => (item=whisk_local_activations) 
+skipping: [invoker3] => (item=whisk_local_whisks) 
+skipping: [invoker3] => (item=whisk_local_activations) 
+skipping: [invoker5] => (item=whisk_local_whisks) 
+skipping: [invoker5] => (item=whisk_local_activations) 
+skipping: [invoker6] => (item=whisk_local_whisks) 
+skipping: [invoker6] => (item=whisk_local_activations) 
+skipping: [invoker7] => (item=whisk_local_whisks) 
+skipping: [invoker7] => (item=whisk_local_activations) 
+
+TASK [invoker : get running invoker information] *******************************
+Friday 12 November 2021  18:27:07 +0000 (0:00:00.196)       0:00:31.981 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : set_fact] ******************************************************
+Friday 12 November 2021  18:27:07 +0000 (0:00:00.137)       0:00:32.119 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : get invoker info] **********************************************
+Friday 12 November 2021  18:27:07 +0000 (0:00:00.131)       0:00:32.251 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : set_fact] ******************************************************
+Friday 12 November 2021  18:27:07 +0000 (0:00:00.133)       0:00:32.385 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : determine if more than one invoker is running] *****************
+Friday 12 November 2021  18:27:07 +0000 (0:00:00.134)       0:00:32.520 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : determine if index of invoker is same with index of inventory host] ***
+Friday 12 November 2021  18:27:08 +0000 (0:00:00.129)       0:00:32.649 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : copy jmxremote password file] **********************************
+Friday 12 November 2021  18:27:08 +0000 (0:00:00.124)       0:00:32.774 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : copy jmxremote access file] ************************************
+Friday 12 November 2021  18:27:08 +0000 (0:00:00.127)       0:00:32.901 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : add additional jvm params if jmxremote is enabled] *************
+Friday 12 November 2021  18:27:08 +0000 (0:00:00.155)       0:00:33.057 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : prepare invoker ports] *****************************************
+Friday 12 November 2021  18:27:08 +0000 (0:00:00.180)       0:00:33.237 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : expose additional ports if jmxremote is enabled] ***************
+Friday 12 November 2021  18:27:08 +0000 (0:00:00.215)       0:00:33.453 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : Load config from template] *************************************
+Friday 12 November 2021  18:27:09 +0000 (0:00:00.194)       0:00:33.648 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : populate environment variables for invoker] ********************
+Friday 12 November 2021  18:27:09 +0000 (0:00:00.212)       0:00:33.861 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : extend invoker dns env] ****************************************
+Friday 12 November 2021  18:27:09 +0000 (0:00:00.218)       0:00:34.079 ******* 
+skipping: [invoker0] => (item=[0, '']) 
+skipping: [invoker1] => (item=[0, '']) 
+skipping: [invoker2] => (item=[0, '']) 
+skipping: [invoker3] => (item=[0, '']) 
+skipping: [invoker4] => (item=[0, '']) 
+skipping: [invoker5] => (item=[0, '']) 
+skipping: [invoker6] => (item=[0, '']) 
+skipping: [invoker7] => (item=[0, '']) 
+
+TASK [invoker : merge extra env variables] *************************************
+Friday 12 November 2021  18:27:09 +0000 (0:00:00.221)       0:00:34.301 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : setup elasticsearch activation store env] **********************
+Friday 12 November 2021  18:27:09 +0000 (0:00:00.196)       0:00:34.498 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : merge elasticsearch activation store env] **********************
+Friday 12 November 2021  18:27:10 +0000 (0:00:00.211)       0:00:34.709 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : setup mongodb artifact store env] ******************************
+Friday 12 November 2021  18:27:10 +0000 (0:00:00.240)       0:00:34.949 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : merge mongodb artifact store env] ******************************
+Friday 12 November 2021  18:27:10 +0000 (0:00:00.197)       0:00:35.147 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : include plugins] ***********************************************
+Friday 12 November 2021  18:27:10 +0000 (0:00:00.236)       0:00:35.383 ******* 
+
+TASK [invoker : set invoker volumes] *******************************************
+Friday 12 November 2021  18:27:10 +0000 (0:00:00.226)       0:00:35.610 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : set invoker runc volume] ***************************************
+Friday 12 November 2021  18:27:11 +0000 (0:00:00.283)       0:00:35.894 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : check if coverage collection is enabled] ***********************
+Friday 12 November 2021  18:27:11 +0000 (0:00:00.141)       0:00:36.035 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : ensure invoker coverage directory is created with permissions] ***
+Friday 12 November 2021  18:27:11 +0000 (0:00:00.185)       0:00:36.221 ******* 
+skipping: [invoker0] => (item=invoker) 
+skipping: [invoker0] => (item=common) 
+skipping: [invoker1] => (item=invoker) 
+skipping: [invoker1] => (item=common) 
+skipping: [invoker2] => (item=invoker) 
+skipping: [invoker2] => (item=common) 
+skipping: [invoker3] => (item=invoker) 
+skipping: [invoker3] => (item=common) 
+skipping: [invoker4] => (item=invoker) 
+skipping: [invoker4] => (item=common) 
+skipping: [invoker5] => (item=invoker) 
+skipping: [invoker5] => (item=common) 
+skipping: [invoker6] => (item=invoker) 
+skipping: [invoker6] => (item=common) 
+skipping: [invoker7] => (item=invoker) 
+skipping: [invoker7] => (item=common) 
+
+TASK [invoker : extend invoker volume for coverage] ****************************
+Friday 12 November 2021  18:27:11 +0000 (0:00:00.214)       0:00:36.436 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : set invoker docker volumes] ************************************
+Friday 12 November 2021  18:27:11 +0000 (0:00:00.172)       0:00:36.608 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : start invoker] *************************************************
+Friday 12 November 2021  18:27:12 +0000 (0:00:00.184)       0:00:36.792 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : wait until Invoker is up and running] **************************
+Friday 12 November 2021  18:27:12 +0000 (0:00:00.200)       0:00:36.993 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+TASK [invoker : get invoker name and index] ************************************
+Friday 12 November 2021  18:27:12 +0000 (0:00:00.219)       0:00:37.213 ******* 
+ok: [invoker0]
+ok: [invoker1]
+ok: [invoker2]
+ok: [invoker3]
+ok: [invoker4]
+ok: [invoker5]
+ok: [invoker6]
+ok: [invoker7]
+
+TASK [invoker : remove invoker] ************************************************
+Friday 12 November 2021  18:27:12 +0000 (0:00:00.236)       0:00:37.449 ******* 
+ok: [invoker1]
+ok: [invoker2]
+ok: [invoker0]
+ok: [invoker3]
+ok: [invoker4]
+ok: [invoker5]
+ok: [invoker7]
+ok: [invoker6]
+
+TASK [invoker : pause/resume at runc-level to restore docker consistency] ******
+Friday 12 November 2021  18:27:14 +0000 (0:00:01.386)       0:00:38.836 ******* 
+changed: [invoker3]
+changed: [invoker0]
+changed: [invoker1]
+changed: [invoker2]
+changed: [invoker4]
+changed: [invoker5]
+changed: [invoker7]
+changed: [invoker6]
+
+TASK [invoker : debug] *********************************************************
+Friday 12 November 2021  18:27:16 +0000 (0:00:01.914)       0:00:40.751 ******* 
+ok: [invoker0] => {
+    "msg": "Handled 0 remaining actions."
+}
+ok: [invoker1] => {
+    "msg": "Handled 0 remaining actions."
+}
+ok: [invoker2] => {
+    "msg": "Handled 0 remaining actions."
+}
+ok: [invoker3] => {
+    "msg": "Handled 0 remaining actions."
+}
+ok: [invoker4] => {
+    "msg": "Handled 0 remaining actions."
+}
+ok: [invoker5] => {
+    "msg": "Handled 0 remaining actions."
+}
+ok: [invoker6] => {
+    "msg": "Handled 0 remaining actions."
+}
+ok: [invoker7] => {
+    "msg": "Handled 0 remaining actions."
+}
+
+TASK [invoker : unpause remaining actions] *************************************
+Friday 12 November 2021  18:27:16 +0000 (0:00:00.187)       0:00:40.939 ******* 
+changed: [invoker0]
+changed: [invoker1]
+changed: [invoker2]
+changed: [invoker3]
+changed: [invoker4]
+changed: [invoker5]
+changed: [invoker6]
+changed: [invoker7]
+
+TASK [invoker : remove remaining actions] **************************************
+Friday 12 November 2021  18:27:17 +0000 (0:00:01.404)       0:00:42.343 ******* 
+changed: [invoker0]
+changed: [invoker1]
+changed: [invoker2]
+changed: [invoker4]
+changed: [invoker3]
+changed: [invoker5]
+changed: [invoker6]
+changed: [invoker7]
+
+TASK [invoker : remove invoker log directory] **********************************
+Friday 12 November 2021  18:27:19 +0000 (0:00:01.391)       0:00:43.735 ******* 
+ok: [invoker0]
+ok: [invoker1]
+ok: [invoker2]
+ok: [invoker3]
+ok: [invoker4]
+ok: [invoker5]
+ok: [invoker6]
+ok: [invoker7]
+
+TASK [invoker : remove invoker conf directory] *********************************
+Friday 12 November 2021  18:27:20 +0000 (0:00:00.996)       0:00:44.732 ******* 
+ok: [invoker1]
+ok: [invoker0]
+ok: [invoker3]
+ok: [invoker4]
+ok: [invoker2]
+ok: [invoker5]
+ok: [invoker6]
+ok: [invoker7]
+
+TASK [invoker : Clean orphaned ifstate.veth* files on Ubuntu 14.04] ************
+Friday 12 November 2021  18:27:21 +0000 (0:00:01.431)       0:00:46.164 ******* 
+skipping: [invoker0]
+skipping: [invoker1]
+skipping: [invoker2]
+skipping: [invoker3]
+skipping: [invoker4]
+skipping: [invoker5]
+skipping: [invoker6]
+skipping: [invoker7]
+
+PLAY [edge] ********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:27:21 +0000 (0:00:00.196)       0:00:46.360 ******* 
+ok: [172.29.200.161]
+
+TASK [nginx : ensure nginx config directory exists] ****************************
+Friday 12 November 2021  18:27:23 +0000 (0:00:02.090)       0:00:48.451 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : copy template from local to remote in nginx config directory] ****
+Friday 12 November 2021  18:27:23 +0000 (0:00:00.065)       0:00:48.516 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : copy cert files from local to remote in nginx config directory] ***
+Friday 12 November 2021  18:27:23 +0000 (0:00:00.034)       0:00:48.551 ******* 
+skipping: [172.29.200.161] => (item=openwhisk-server-cert.pem) 
+skipping: [172.29.200.161] => (item=openwhisk-server-key.pem) 
+skipping: [172.29.200.161] => (item=openwhisk-client-ca-cert.pem) 
+
+TASK [nginx : copy password files for cert from local to remote in nginx config directory] ***
+Friday 12 November 2021  18:27:23 +0000 (0:00:00.086)       0:00:48.637 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : copy controller cert for authentication] *************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.035)       0:00:48.673 ******* 
+skipping: [172.29.200.161] => (item=controller-openwhisk-server-cert.pem) 
+skipping: [172.29.200.161] => (item=controller-openwhisk-server-key.pem) 
+
+TASK [nginx : ensure nginx log directory is created with permissions] **********
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.100)       0:00:48.773 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : pull the nginx:1.21.1 image] *************************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.057)       0:00:48.831 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : ensure html directory exists] ************************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.037)       0:00:48.868 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : check if html directory exists] **********************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.043)       0:00:48.912 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : configuration volumes to mount] **********************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.039)       0:00:48.951 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : optional html volume to mount] ***********************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.033)       0:00:48.984 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : (re)start nginx] *************************************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.036)       0:00:49.021 ******* 
+skipping: [172.29.200.161]
+
+TASK [nginx : remove nginx] ****************************************************
+Friday 12 November 2021  18:27:24 +0000 (0:00:00.033)       0:00:49.054 ******* 
+ok: [172.29.200.161]
+
+TASK [nginx : remove nginx config directory] ***********************************
+Friday 12 November 2021  18:27:25 +0000 (0:00:00.661)       0:00:49.716 ******* 
+ok: [172.29.200.161]
+
+TASK [nginx : remove nginx log directory] **************************************
+Friday 12 November 2021  18:27:25 +0000 (0:00:00.471)       0:00:50.187 ******* 
+ok: [172.29.200.161]
+
+TASK [cli : Ensure nginx directory for cli exists] *****************************
+Friday 12 November 2021  18:27:25 +0000 (0:00:00.429)       0:00:50.617 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Ensure temporary directory exists] *********************************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.079)       0:00:50.697 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Download release archive to build directory ...] *******************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.038)       0:00:50.735 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : ... or Copy release archive to build directory] ********************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.036)       0:00:50.771 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Expand the archive into the build directory] ***********************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.037)       0:00:50.809 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Delete temp directory] *********************************************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.033)       0:00:50.843 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Generate a list of individual tarballs to expand] ******************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.037)       0:00:50.881 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Unarchive the individual tarballs] *********************************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.037)       0:00:50.919 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Generate a list of individual zipfiles to expand] ******************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.050)       0:00:50.970 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : Unarchive the individual zipfiles into binaries] *******************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.049)       0:00:51.020 ******* 
+skipping: [172.29.200.161]
+
+TASK [cli : remove cli nginx directory] ****************************************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.046)       0:00:51.066 ******* 
+ok: [172.29.200.161]
+
+PLAY [ansible] *****************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:27:26 +0000 (0:00:00.520)       0:00:51.586 ******* 
+ok: [ansible]
+
+TASK [cli-install : grab the local CLI from the binaries unarchived into nginx] ***
+Friday 12 November 2021  18:27:28 +0000 (0:00:01.201)       0:00:52.788 ******* 
+skipping: [ansible]
+
+TASK [cli-install : remove wsk binary] *****************************************
+Friday 12 November 2021  18:27:28 +0000 (0:00:00.042)       0:00:52.830 ******* 
+ok: [ansible]
+
+PLAY RECAP *********************************************************************
+172.29.200.161             : ok=5    changed=0    unreachable=0    failed=0    skipped=22   rescued=0    ignored=0   
+ansible                    : ok=2    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+controller0                : ok=5    changed=2    unreachable=0    failed=0    skipped=29   rescued=0    ignored=0   
+invoker0                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+invoker1                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+invoker2                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+invoker3                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+invoker4                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+invoker5                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+invoker6                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+invoker7                   : ok=9    changed=3    unreachable=0    failed=0    skipped=43   rescued=0    ignored=0   
+kafka0                     : ok=6    changed=2    unreachable=0    failed=0    skipped=11   rescued=0    ignored=0   
+
+Friday 12 November 2021  18:27:28 +0000 (0:00:00.296)       0:00:53.126 ******* 
+=============================================================================== 
+kafka : remove kafka --------------------------------------------------- 12.09s
+Gathering Facts --------------------------------------------------------- 4.19s
+zookeeper : remove zookeeper -------------------------------------------- 2.34s
+Gathering Facts --------------------------------------------------------- 2.09s
+invoker : pause/resume at runc-level to restore docker consistency ------ 1.91s
+Gathering Facts --------------------------------------------------------- 1.57s
+invoker : remove invoker conf directory --------------------------------- 1.43s
+invoker : unpause remaining actions ------------------------------------- 1.40s
+invoker : remove remaining actions -------------------------------------- 1.39s
+invoker : remove invoker ------------------------------------------------ 1.39s
+Gathering Facts --------------------------------------------------------- 1.32s
+Gathering Facts --------------------------------------------------------- 1.26s
+Gathering Facts --------------------------------------------------------- 1.20s
+invoker : remove invoker log directory ---------------------------------- 1.00s
+zookeeper : remove old zookeeper ---------------------------------------- 0.99s
+invoker : copy keystore, key and cert ----------------------------------- 0.77s
+kafka : remove old kafka ------------------------------------------------ 0.67s
+nginx : remove nginx ---------------------------------------------------- 0.66s
+controller : remove controller ------------------------------------------ 0.59s
+controller : remove controller log directory ---------------------------- 0.55s
+
+PLAY [redis] *******************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:27:29 +0000 (0:00:00.023)       0:00:00.023 ******* 
+ok: [172.29.200.161]
+
+TASK [redis : pull the redis:4.0 image] ****************************************
+Friday 12 November 2021  18:27:30 +0000 (0:00:01.430)       0:00:01.453 ******* 
+changed: [172.29.200.161]
+
+TASK [redis : (re)start redis] *************************************************
+Friday 12 November 2021  18:27:32 +0000 (0:00:01.645)       0:00:03.099 ******* 
+changed: [172.29.200.161]
+
+TASK [redis : wait until redis is up and running] ******************************
+Friday 12 November 2021  18:27:45 +0000 (0:00:13.470)       0:00:16.569 ******* 
+changed: [172.29.200.161]
+
+TASK [redis : remove redis] ****************************************************
+Friday 12 November 2021  18:27:48 +0000 (0:00:03.014)       0:00:19.584 ******* 
+skipping: [172.29.200.161]
+
+PLAY [apigateway] **************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:27:48 +0000 (0:00:00.049)       0:00:19.634 ******* 
+ok: [172.29.200.161]
+
+TASK [apigateway : (re)start apigateway] ***************************************
+Friday 12 November 2021  18:27:50 +0000 (0:00:01.210)       0:00:20.844 ******* 
+changed: [172.29.200.161]
+
+TASK [apigateway : wait until the API Gateway in this host is up and running] ***
+Friday 12 November 2021  18:27:54 +0000 (0:00:03.815)       0:00:24.660 ******* 
+ok: [172.29.200.161]
+
+TASK [apigateway : remove apigateway] ******************************************
+Friday 12 November 2021  18:27:54 +0000 (0:00:00.827)       0:00:25.487 ******* 
+skipping: [172.29.200.161]
+
+PLAY RECAP *********************************************************************
+172.29.200.161             : ok=7    changed=4    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+
+Friday 12 November 2021  18:27:54 +0000 (0:00:00.031)       0:00:25.518 ******* 
+=============================================================================== 
+redis : (re)start redis ------------------------------------------------ 13.47s
+apigateway : (re)start apigateway --------------------------------------- 3.82s
+redis : wait until redis is up and running ------------------------------ 3.01s
+redis : pull the redis:4.0 image ---------------------------------------- 1.65s
+Gathering Facts --------------------------------------------------------- 1.43s
+Gathering Facts --------------------------------------------------------- 1.21s
+apigateway : wait until the API Gateway in this host is up and running --- 0.83s
+redis : remove redis ---------------------------------------------------- 0.05s
+apigateway : remove apigateway ------------------------------------------ 0.03s
+
+PLAY [zookeepers] **************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:27:55 +0000 (0:00:00.021)       0:00:00.021 ******* 
+ok: [kafka0]
+
+TASK [zookeeper : (re)start zookeeper] *****************************************
+Friday 12 November 2021  18:27:57 +0000 (0:00:01.570)       0:00:01.592 ******* 
+changed: [kafka0]
+
+TASK [zookeeper : wait until the Zookeeper in this host is up and running] *****
+Friday 12 November 2021  18:28:00 +0000 (0:00:03.626)       0:00:05.219 ******* 
+changed: [kafka0]
+
+TASK [zookeeper : remove old zookeeper] ****************************************
+Friday 12 November 2021  18:28:02 +0000 (0:00:01.705)       0:00:06.924 ******* 
+skipping: [kafka0]
+
+TASK [zookeeper : remove zookeeper] ********************************************
+Friday 12 November 2021  18:28:02 +0000 (0:00:00.066)       0:00:06.990 ******* 
+skipping: [kafka0]
+
+PLAY [kafkas] ******************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:28:02 +0000 (0:00:00.068)       0:00:07.059 ******* 
+ok: [kafka0]
+
+TASK [kafka : create kafka certificate directory] ******************************
+Friday 12 November 2021  18:28:04 +0000 (0:00:02.128)       0:00:09.187 ******* 
+ok: [kafka0]
+
+TASK [kafka : copy keystore] ***************************************************
+Friday 12 November 2021  18:28:05 +0000 (0:00:00.492)       0:00:09.680 ******* 
+skipping: [kafka0]
+
+TASK [kafka : add kafka default env vars] **************************************
+Friday 12 November 2021  18:28:05 +0000 (0:00:00.081)       0:00:09.762 ******* 
+ok: [kafka0]
+
+TASK [kafka : add kafka non-ssl vars] ******************************************
+Friday 12 November 2021  18:28:05 +0000 (0:00:00.104)       0:00:09.866 ******* 
+ok: [kafka0]
+
+TASK [kafka : add kafka ssl env vars] ******************************************
+Friday 12 November 2021  18:28:05 +0000 (0:00:00.057)       0:00:09.924 ******* 
+skipping: [kafka0]
+
+TASK [kafka : join kafka ssl env vars] *****************************************
+Friday 12 November 2021  18:28:05 +0000 (0:00:00.049)       0:00:09.974 ******* 
+skipping: [kafka0]
+
+TASK [kafka : join kafka non-ssl env vars] *************************************
+Friday 12 November 2021  18:28:05 +0000 (0:00:00.051)       0:00:10.025 ******* 
+ok: [kafka0]
+
+TASK [kafka : (re)start kafka using 'wurstmeister/kafka:2.13-2.7.0'] ***********
+Friday 12 November 2021  18:28:05 +0000 (0:00:00.099)       0:00:10.124 ******* 
+changed: [kafka0]
+
+TASK [kafka : wait until the kafka server started up] **************************
+Friday 12 November 2021  18:28:09 +0000 (0:00:03.198)       0:00:13.323 ******* 
+FAILED - RETRYING: wait until the kafka server started up (10 retries left).
+changed: [kafka0]
+
+TASK [kafka : remove old kafka] ************************************************
+Friday 12 November 2021  18:28:16 +0000 (0:00:07.877)       0:00:21.200 ******* 
+skipping: [kafka0]
+
+TASK [kafka : remove kafka] ****************************************************
+Friday 12 November 2021  18:28:17 +0000 (0:00:00.051)       0:00:21.251 ******* 
+skipping: [kafka0]
+
+PLAY [controllers] *************************************************************
+
+TASK [Gathering Facts] *********************************************************
+Friday 12 November 2021  18:28:17 +0000 (0:00:00.050)       0:00:21.302 ******* 
+ok: [controller0]
+
+TASK [controller : docker login] ***********************************************
+Friday 12 November 2021  18:28:18 +0000 (0:00:01.408)       0:00:22.710 ******* 
+skipping: [controller0]
+
+TASK [controller : get controller name and index] ******************************
+Friday 12 November 2021  18:28:18 +0000 (0:00:00.047)       0:00:22.758 ******* 
+ok: [controller0]
+
+TASK [controller : pull the latest image of controller] ************************
+Friday 12 November 2021  18:28:18 +0000 (0:00:00.051)       0:00:22.809 ******* 
+skipping: [controller0]
+
+TASK [controller : ensure controller log directory is created with permissions] ***
+Friday 12 November 2021  18:28:18 +0000 (0:00:00.039)       0:00:22.849 ******* 
+changed: [controller0]
+
+TASK [controller : ensure controller log file is created with permissions] *****
+Friday 12 November 2021  18:28:19 +0000 (0:00:00.420)       0:00:23.270 ******* 
+skipping: [controller0]
+
+TASK [controller : ensure controller config directory is created with permissions] ***
+Friday 12 November 2021  18:28:19 +0000 (0:00:00.042)       0:00:23.312 ******* 
+changed: [controller0]
+
+TASK [controller : copy jmxremote password file] *******************************
+Friday 12 November 2021  18:28:19 +0000 (0:00:00.502)       0:00:23.815 ******* 
+changed: [controller0]
+
+TASK [controller : copy jmxremote access file] *********************************
+Friday 12 November 2021  18:28:20 +0000 (0:00:01.198)       0:00:25.013 ******* 
+changed: [controller0]
+
+TASK [controller : copy kafka truststore/keystore] *****************************
+Friday 12 November 2021  18:28:21 +0000 (0:00:00.818)       0:00:25.832 ******* 
+skipping: [controller0]
+
+TASK [controller : copy nginx certificate keystore] ****************************
+Friday 12 November 2021  18:28:21 +0000 (0:00:00.053)       0:00:25.886 ******* 
+changed: [controller0]
+
+TASK [controller : copy certificates] ******************************************
+Friday 12 November 2021  18:28:22 +0000 (0:00:00.954)       0:00:26.840 ******* 
+changed: [controller0] => (item=controller-openwhisk-server-cert.pem)
+changed: [controller0] => (item=controller-openwhisk-server-key.pem)
+
+TASK [controller : check, that required databases exist] ***********************
+Friday 12 November 2021  18:28:24 +0000 (0:00:02.312)       0:00:29.153 ******* 
+included: /home/ow/openwhisk-caching/ansible/tasks/db/checkDb.yml for controller0
+included: /home/ow/openwhisk-caching/ansible/tasks/db/checkDb.yml for controller0
+included: /home/ow/openwhisk-caching/ansible/tasks/db/checkDb.yml for controller0
+
+TASK [controller : check if whisk_local_whisks with CouchDB exists] ************
+Friday 12 November 2021  18:28:25 +0000 (0:00:00.216)       0:00:29.370 ******* 
+fatal: [controller0]: FAILED! => {"changed": false, "content": "", "elapsed": 0, "msg": "Status code was -1 and not [200]: Request failed: <urlopen error [Errno 111] Connection refused>", "redirected": false, "status": -1, "url": "http://172.29.200.161:5989/whisk_local_whisks"}
+
+Status code was -1 and not [200]: Request failed: <urlopen error [Errno 111]
+Connection refused>
+
+PLAY RECAP *********************************************************************
+controller0                : ok=11   changed=6    unreachable=0    failed=1    skipped=4    rescued=0    ignored=0   
+kafka0                     : ok=10   changed=4    unreachable=0    failed=0    skipped=7    rescued=0    ignored=0   
+
+Friday 12 November 2021  18:28:25 +0000 (0:00:00.756)       0:00:30.126 ******* 
+=============================================================================== 
+kafka : wait until the kafka server started up -------------------------- 7.88s
+zookeeper : (re)start zookeeper ----------------------------------------- 3.63s
+kafka : (re)start kafka using 'wurstmeister/kafka:2.13-2.7.0'  ---------- 3.20s
+controller : copy certificates ------------------------------------------ 2.31s
+Gathering Facts --------------------------------------------------------- 2.13s
+zookeeper : wait until the Zookeeper in this host is up and running ----- 1.71s
+Gathering Facts --------------------------------------------------------- 1.57s
+Gathering Facts --------------------------------------------------------- 1.41s
+controller : copy jmxremote password file ------------------------------- 1.20s
+controller : copy nginx certificate keystore ---------------------------- 0.95s
+controller : copy jmxremote access file --------------------------------- 0.82s
+controller : check if whisk_local_whisks with CouchDB exists ------------ 0.76s
+controller : ensure controller config directory is created with permissions --- 0.50s
+kafka : create kafka certificate directory ------------------------------ 0.49s
+controller : ensure controller log directory is created with permissions --- 0.42s
+controller : check, that required databases exist ----------------------- 0.22s
+kafka : add kafka default env vars -------------------------------------- 0.10s
+kafka : join kafka non-ssl env vars ------------------------------------- 0.10s
+kafka : copy keystore --------------------------------------------------- 0.08s
+zookeeper : remove zookeeper -------------------------------------------- 0.07s
+
+error: Invalid argument(s). Unable to get action 'cham_40': Get https://172.29.200.161:10001/api/v1/namespaces/afuerst/actions/cham_40?code=false: dial tcp 172.29.200.161:10001: getsockopt: connection refused
+Run 'wsk --help' for usage.
+
+Traceback (most recent call last):
+  File "/home/alfuerst/.pyenv/versions/3.8.2/bin/locust", line 10, in <module>
+    sys.exit(main())
+  File "/home/alfuerst/.pyenv/versions/3.8.2/lib/python3.8/site-packages/locust/main.py", line 126, in main
+    docstring, user_classes, shape_class = load_locustfile(locustfile)
+  File "/home/alfuerst/.pyenv/versions/3.8.2/lib/python3.8/site-packages/locust/main.py", line 81, in load_locustfile
+    imported = source.load_module()
+  File "<frozen importlib._bootstrap_external>", line 462, in _check_name_wrapper
+  File "<frozen importlib._bootstrap_external>", line 962, in load_module
+  File "<frozen importlib._bootstrap_external>", line 787, in load_module
+  File "<frozen importlib._bootstrap>", line 265, in _load_module_shim
+  File "<frozen importlib._bootstrap>", line 702, in _load
+  File "<frozen importlib._bootstrap>", line 671, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 783, in exec_module
+  File "<frozen importlib._bootstrap>", line 219, in _call_with_frames_removed
+  File "/home/alfuerst/repos/openwhisk-balancing/load-gen/load/locustfile-transaction.py", line 27, in <module>
+    url = add_web_action(name, path, container, memory=memory, host=host)
+  File "/home/alfuerst/repos/openwhisk-balancing/load-gen/load/wsk_interact.py", line 46, in add_web_action
+    wsk.check_returncode()
+  File "/home/alfuerst/.pyenv/versions/3.8.2/lib/python3.8/site-packages/gevent/subprocess.py", line 1912, in check_returncode
+    raise _with_stdout_stderr(CalledProcessError(self.returncode, self.args, self.stdout), self.stderr)
+subprocess.CalledProcessError: Command '['wsk', '-i', 'action', 'update', '/afuerst/cham_40', '../ow-actions/chameleon.zip', '--web', 'true', '--memory', '128', '--kind', 'python:ai-vid', '--timeout', '300000']' returned non-zero exit status 3.
