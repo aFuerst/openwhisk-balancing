@@ -34,6 +34,7 @@ import scala.math.{min}
 import org.apache.commons.math3.distribution.{NormalDistribution, UniformRealDistribution}
 import scala.collection.mutable
 import scala.concurrent.duration._
+import java.util.concurrent.atomic.LongAdder
 
 /**
  * A loadbalancer that schedules workload based on random-forwarding consistent hashing load balancer
@@ -84,7 +85,6 @@ class RandomForwardLoadBalancer(
   }
 
     actorSystem.scheduler.scheduleAtFixedRate(10.seconds, 5.seconds)(() => RandomForwardLoadBalancer.updatePopularity(schedulingState))
-
 }
 
 object RandomForwardLoadBalancer extends LoadBalancerProvider {
@@ -93,10 +93,10 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
   private val uniform_distrib : UniformRealDistribution = new UniformRealDistribution(0.0, 1.0)
   private val load_range : IndexedSeq[BigDecimal] = Range.BigDecimal(0.0, 10.0, 0.01)
   private val transformed_load : IndexedSeq[Double] = load_range.map(x => distrib.cumulativeProbability(x.doubleValue))
-  private var popularity: mutable.Map[String, Integer] = mutable.Map[String, Integer]().withDefaultValue(0)
+  private var popularity: mutable.Map[String, LongAdder] = mutable.Map[String, LongAdder]().withDefaultValue(new LongAdder())
   private var popular: mutable.Map[String, Boolean] = mutable.Map[String, Boolean]().withDefaultValue(false)
   private var ratios: mutable.Map[String, Double] = mutable.Map[String, Double]().withDefaultValue(1.0)
-  private var invocations: Integer = 0
+  val totalActivations = new LongAdder()
 
   override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
     implicit actorSystem: ActorSystem,
@@ -128,22 +128,22 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
       invokerPoolFactory)
   }
 
-
   def updatePopularity(schedulingState: RedisAwareLoadBalancerState)(implicit logging: Logging) : Unit = {
     logging.info(this, s"calculating popularity")
-    if (invocations > 0) {
+    val actsLong = totalActivations.longValue.toDouble
+    if (actsLong > 0) {
       var cutoff : Double = 1.0
       if (schedulingState.runTimes.size > 0) {
         cutoff = 1.0 / schedulingState.runTimes.size.toDouble
       }
 
-      var sorted = popularity.toList.sortBy(item => item._2)
+      var sorted = popularity.toList.sortBy(item => item._2.longValue)
       var state = sorted.iterator.foldLeft("") { (agg, curr) =>
-        val ratio : Double = curr._2.toDouble / invocations.toDouble
+        val ratio : Double = curr._2.longValue / actsLong
         ratios += (curr._1 -> ratio)
         val pop = ratio >= cutoff
         popular += (curr._1 -> pop)
-        agg + s"${curr._1} has '${curr._2}' invokes out of $invocations total for a ratio of $ratio and is popular? ${ratio >= cutoff}; "
+        agg + s"${curr._1} has '${curr._2}' invokes out of ${actsLong} total for a ratio of $ratio and is popular? ${ratio >= cutoff}; "
       }
       logging.info(this, s"popularity cutoff is $cutoff; Popularity state is : $state")
     }
@@ -168,8 +168,8 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
   }
 
   def isPopular(schedulingState: RedisAwareLoadBalancerState,name: String)(implicit logging: Logging, transid: TransactionId) : Boolean = {
-    val pop = popularity(name).toDouble
-    val ratio : Double = pop / invocations.toDouble
+    val pop = popularity(name).longValue.toDouble
+    val ratio : Double = pop / totalActivations.longValue
     val cutoff : Double = 1.0 / schedulingState.runTimes.size.toDouble
     // logging.info(this, s"checking popularity ${name} $ratio >= $cutoff => ${ratio >= cutoff}")
     return ratio >= cutoff
@@ -188,13 +188,12 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     loadStrategy: String,
     algo: String)
     (implicit logging: Logging, transId: TransactionId) : Option[InvokerInstanceId] = {
-      
+    totalActivations.increment()      
     // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")(transId)
 
     val strName = s"${fqn.namespace}/${fqn.name}"
-    invocations += 1
-    val func_pop = popularity(strName) + 1
-    popularity += (strName -> func_pop)
+    val func_pop = popularity(strName).increment()
+    // popularity += (strName -> func_pop)
     if (! isPopular(schedulingState, strName)) {
       // logging.info(this, s"unpopular function ${strName} :(")(transId)
       return getInvokerConsistentCache(fqn, schedulingState, activationId, loadStrategy)

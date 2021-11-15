@@ -241,9 +241,15 @@ case class RoundRobinLBState(
   def invokers: IndexedSeq[InvokerHealth] = _invokers
 
   def roundRobin() : Option[InvokerInstanceId] = {
-    val ret = _invokers(robinInt)
+    var ret = _invokers(robinInt)
     robinInt += 1
     robinInt %= _invokers.length;
+
+    while (! ret.status.isUsable) {
+      var ret = _invokers(robinInt)
+      robinInt += 1
+      robinInt %= _invokers.length;
+    }
     return Some(ret.id)
   }
 
