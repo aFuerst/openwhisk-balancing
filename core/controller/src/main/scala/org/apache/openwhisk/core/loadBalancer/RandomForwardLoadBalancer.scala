@@ -99,7 +99,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
   private val load_range : IndexedSeq[BigDecimal] = Range.BigDecimal(0.0, 10.0, 0.01)
   private val transformed_load_range : IndexedSeq[Double] = load_range.map(x => distrib.cumulativeProbability(x.doubleValue))
   private val invoker_transformed_loads : mutable.Map[InvokerInstanceId, Double] = mutable.Map[InvokerInstanceId, Double]().withDefaultValue(0.0)
-  private var popularity: mutable.Map[String, LongAdder] = mutable.Map[String, LongAdder]().withDefaultValue(new LongAdder())
+  private var popularity: mutable.Map[String, Long] = mutable.Map[String, Long]().withDefaultValue(0)
   private var popular: mutable.Map[String, Boolean] = mutable.Map[String, Boolean]().withDefaultValue(false)
   private var ratios: mutable.Map[String, Double] = mutable.Map[String, Double]().withDefaultValue(1.0)
   val totalActivations = new LongAdder()
@@ -151,7 +151,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
       if (schedulingState.runTimes.size > 0) {
         cutoff = 1.0 / schedulingState.runTimes.size.toDouble
       }
-
+      // logging.info(this, s"There are ${popularity.size} funcs in system")(TransactionId.invokerRedis)
       var sorted = popularity.toList.sortBy(item => item._2.longValue)
       var state = sorted.iterator.foldLeft("") { (agg, curr) =>
         val ratio : Double = curr._2.longValue / actsLong
@@ -160,7 +160,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         popular += (curr._1 -> pop)
         agg + s"${curr._1} has '${curr._2}' invokes out of ${actsLong} total for a ratio of $ratio and is popular? ${ratio >= cutoff}; "
       }
-      logging.info(this, s"popularity cutoff is $cutoff; Popularity state is : $state")
+      logging.info(this, s"popularity cutoff is $cutoff; Popularity state is: $state")(TransactionId.invokerRedis)
     }
   }
 
@@ -214,8 +214,8 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")(transId)
 
     val strName = s"${fqn.namespace}/${fqn.name}"
-    val func_pop = popularity(strName).increment()
-    // popularity += (strName -> func_pop)
+    val func_pop = popularity(strName) + 1//.increment()
+    popularity += (strName -> func_pop)
     if (! isPopular(schedulingState, strName)) {
       // logging.info(this, s"unpopular function ${strName} :(")(transId)
       return getInvokerConsistentCache(fqn, schedulingState, activationId, loadStrategy)
@@ -236,7 +236,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         for (i <- 0 to max_chain) {
           val id = (idx + i) % schedulingState.invokers.length
           node = schedulingState._consistentHashList(id)
-          // val serverLoad = schedulingState.getLoad(node, loadStrategy)
+          val serverLoad = schedulingState.getLoad(node, loadStrategy)
 
           // val should_forward = forwardProbability(serverLoad, strName, node.invoker)
           val should_forward = forwardProbability(node.invoker)
