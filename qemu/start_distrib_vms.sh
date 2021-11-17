@@ -20,7 +20,7 @@ net="mynet$VMID"
 
 SERVER=$(($VMID/3))
 
-CPUS=16
+CPUS=4
 if [ $VMID == 0 ]
 then
 CPUS=12

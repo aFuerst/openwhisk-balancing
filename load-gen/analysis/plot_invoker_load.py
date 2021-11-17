@@ -110,8 +110,8 @@ def plot(path, metric):
         normed = normed.sort_index()
         min_t = min(normed.index)
         max_t = max(normed.index)
-        if name == "json_100":
-          print(min_t, max_t)
+        # if name == "json_100":
+        #   print(min_t, max_t)
         normed.index -= min_t
         ax.plot(normed, 'o')
 
@@ -122,7 +122,7 @@ def plot(path, metric):
     min_t = min(mean_df.index)
     max_t = max(mean_df.index)
     mean_df.index -= min_t 
-    print(min_t, max_t)
+    # print(min_t, max_t)
     ax.plot(mean_df.index, mean_df["mean"], label="Mean Load", color='k')
     ax.legend()
     save_fname = os.path.join(save_pth, "{}-{}.png".format(users, "load_vs_latency"))

@@ -26,5 +26,8 @@ load/testlocust/
 load/transaction/
 load/vary_users/
 load/compare/
+load/compare2/
+load/compare1.5/
+load/vary-ceil/
 
 analysis/**/*png

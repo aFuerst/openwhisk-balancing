@@ -9,9 +9,8 @@ file_path = sys.argv[1]
 dir = path.dirname(file_path)
 df = pd.read_csv(file_path)
 
-print(len(df))
+# print(len(df))
 df = df[df["success"]]
-print(len(df))
 splits = df["failure_message"].apply(str.split, args=(":")).to_list()
 colds = [str2bool(item[0]) for item in splits]
 lats  = [float(item[1]) for item in splits]
@@ -26,5 +25,6 @@ df["latency"] = lats
 df["function"] = functions
 df["invoke_time"] = times
 df["activation_id"] = activation_ids
+print(len(df), len(df[df["cold"] == True]))
 
 df.to_csv("{}/parsed_successes.csv".format(dir),  index=False, index_label=False)

@@ -22,7 +22,7 @@ action_dict = {}
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
   path = os.path.join("../ow-actions", zip_file)
-  for freq in [40, 75, 100, 150]:
+  for freq in [1, 5, 16, 40]:
     name = action_name + "_" + str(freq)
     url = add_web_action(name, path, container, memory=memory, host=host)
     action_dict[name] = Action(name, url, warm_time, cold_time, freq)

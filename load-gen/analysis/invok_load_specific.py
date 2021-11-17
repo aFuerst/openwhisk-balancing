@@ -1,5 +1,6 @@
 from collections import defaultdict
 import os, sys
+import argparse
 from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib as mpl
@@ -8,13 +9,15 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-path = "/home/alfuerst/repos/openwhisk-balancing/load-gen/load/testlocust/sharding-100-users/"
-if len(sys.argv) > 1:
-  path = sys.argv[1]
+parser = argparse.ArgumentParser(description='')
+parser.add_argument("--path", type=str, default="/home/alfuerst/repos/openwhisk-balancing/load-gen/load/testlocust/sharding-100-users/", required=True)
+parser.add_argument("--users", type=int, default=100, required=False)
+parser.add_argument("--func", type=str, default="aes", required=False)
+parser.add_argument("--freq", type=int, default=1, required=False)
+args = parser.parse_args()
 
-users = 100
-if len(sys.argv) > 2:
-  users = int(sys.argv[2])
+path = args.path
+users = args.users
 
 def map_load(path, metric="loadAvg"):
   time_min = datetime(2050, 1, 1, tzinfo=None)
@@ -135,71 +138,9 @@ def map_load(path, metric="loadAvg"):
 
 
   df["load"] = df.apply(get_load, axis=1)
-  # print(df)
   save_pth = os.path.join(path, "invokerload.csv")
-  # for invok in df["invoker"].unique():
-  #   print(invok, df[df["invoker"] == invok]["load"].max())
   df.to_csv(save_pth, index=False)
   return df
-
-def plot_relationship(load_df, plotCold=False, both=False, addtl=""):
-  successes_file = os.path.join(path, "parsed_successes.csv")
-  df = pd.read_csv(successes_file, encoding='utf-8', low_memory=False)
-  df["start_time"] = pd.to_datetime(df["start_time"])
-  df["start_time"] = df["start_time"].dt.round("1s")
-
-  # df["activation_id"] = df["activation_id"].astype(str)
-  # load_df["activation_id"] = load_df["activation_id"].astype(str)
-  # print(load_df["activation_id"].dtype)
-
-  # print(df.dtypes)
-  # print(load_df.dtypes)
-
-  # df = df.join(load_df, on=["activation_id"], how='left', rsuffix="r_")
-  df = df.merge(load_df, on=["activation_id"], how='left')
-  # print(df)
-
-  xs = []
-  ys = []
-  points = []
-  grouped = df.groupby(by="function")
-  for name, group in grouped:
-    if not both:
-      group = group[group["cold"] == plotCold]
-    warmNormed = group["latency"] / group["latency"].mean()
-    # print(len(warmNormed), len(df.iloc[warmNormed.index]["load"]))
-    load = df.iloc[warmNormed.index]["load"]
-    # load["normed"] = warmNormed 
-    # joined = warmNormed.join(df.iloc[warmNormed.index]["load"])
-    for i in range(len(warmNormed)):
-      # print(load.iloc[i], warmNormed.iloc[i])
-      points.append((load.iloc[i], warmNormed.iloc[i]))
-      xs.append(warmNormed.iloc[i])
-      ys.append(load.iloc[i])
-    # break
-
-  points = sorted(points, key=lambda x: x[0])
-
-  xs = [norm for load,norm in points]
-  ys = [load for load,norm in points]
-  # print(len(points), len(df))
-
-  fig, ax = plt.subplots()
-  plt.tight_layout()
-  fig.set_size_inches(5,3)
-  label="both"
-  if not both:
-    if plotCold:
-      label="cold"
-    else:
-      label="warm"
-  ax.plot(xs, ys, 'o', label=label)
-  ax.set_ylabel("Invoker {}".format(metric))
-  ax.set_xlabel("Normalized latency")
-  ax.legend()
-  save_fname = os.path.join(path, "{}-{}{}.png".format("latency_to_load", label, addtl))
-  plt.savefig(save_fname, bbox_inches="tight")
-  plt.close(fig)
 
 def plotPerFunc(load_df, metric):
   successes_file = os.path.join(path, "parsed_successes.csv")
@@ -216,68 +157,40 @@ def plotPerFunc(load_df, metric):
     points[freq][func] = []
     group = group[group["cold"] == False]
     warmNormed = group["latency"] / group["latency"].mean()
-    # print(len(warmNormed), len(df.iloc[warmNormed.index]["load"]))
     load = df.iloc[warmNormed.index]["load"]
-    # load["normed"] = warmNormed 
-    # joined = warmNormed.join(df.iloc[warmNormed.index]["load"])
-    # print(warmNormed)
-    # print(df)
-    # print(df.iloc[warmNormed.index])
     for i in range(len(warmNormed)):
-      # print(load.iloc[i], warmNormed.iloc[i])
       points[freq][func].append((warmNormed.iloc[i], load.iloc[i]))
-      # xs.append(warmNormed.iloc[i])
-      # ys.append(load.iloc[i])
-    # break
     points[freq][func] = sorted(points[freq][func], key=lambda pt: pt[0])
-    # print(points[freq][func])
-    # break
   try:
     os.mkdir(os.path.join(path, "latencies"))
   except:
     pass
-  for freq in points.keys():
+  fig, ax = plt.subplots()
+  plt.tight_layout()
+  fig.set_size_inches(5,3)
+  # print(points.keys())
+  freq_points = points[str(args.freq)] 
+  # print(freq_points.items())
+  points = freq_points[args.func]
+  xs = [norm for norm,load in points]
+  ys = [load for norm,load in points]
+  ax.plot(xs, ys, 'o', label=args.func)
+  b, a = np.polyfit(xs, ys, deg=1)
 
-    fig, ax = plt.subplots()
-    plt.tight_layout()
-    fig.set_size_inches(5,3)
-    for func in points[freq]:
-      xs = [norm for norm,load in points[freq][func]]
-      ys = [load for norm,load in points[freq][func]]
-      # ax.plot(xs, ys, 'o', label=func)
-      if len(xs) == 0:
-        print(func, freq)
-        continue
+  # Create sequence of 100 numbers from 0 to 100
+  xseq = np.linspace(min(xs), max(xs), num=100)
+  # Plot regression line
+  ax.plot(xseq, a + b * xseq, label=args.func)  
+  # break
 
-
-      b, a = np.polyfit(xs, ys, deg=1)
-
-      # Create sequence of 100 numbers from 0 to 100
-      xseq = np.linspace(min(xs), max(xs), num=100)
-
-      # Plot regression line
-      ax.plot(xseq, a + b * xseq, label=func)  
-      # break
-
-    ax.set_ylabel("Invoker {}".format(metric))
-    ax.set_xlabel("Normalized latency")
-    ax.legend()
-    save_fname = os.path.join(path, "latencies", "{}-{}.png".format("latency_to_load", freq))
-    plt.savefig(save_fname, bbox_inches="tight")
-    plt.close(fig)
+  ax.set_ylabel("Invoker {}".format(metric))
+  ax.set_xlabel("Normalized latency")
+  ax.legend()
+  save_fname = os.path.join(path, "latencies", "latency_to_load-{}-{}.png".format(args.func, args.freq))
+  plt.savefig(save_fname, bbox_inches="tight")
+  plt.close(fig)
 
 metric="loadAvg"
-load_df = map_load(path, metric=metric)
-metric = "-loadAvg"
-plot_relationship(load_df, plotCold=False, addtl=metric)
-plot_relationship(load_df, plotCold=True, addtl=metric)
-plot_relationship(load_df, both=True, addtl=metric)
-plotPerFunc(load_df, metric=metric)
 
-metric="cpuLoad"
 load_df = map_load(path, metric=metric)
-metric="-cpuLoad"
-plot_relationship(load_df, plotCold=False, addtl=metric)
-plot_relationship(load_df, plotCold=True, addtl=metric)
-plot_relationship(load_df, both=True, addtl=metric)
-
+plotPerFunc(load_df, metric="loadAvg")
