@@ -255,7 +255,7 @@ case class RedisAwareLoadBalancerState(
   }
 
   def emitMetrics() : Unit = {
-    logging.info(this, s"Current system data= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad, running load: $runningLoad, minute Load Avg: $minuteLoadAvg")
+    logging.info(this, s"Current system data= runtimes: $runTimes, cpu load: $cpuLoad, mem load: $memLoad, running load: $runningLoad, minute Load Avg: $minuteLoadAvg")(TransactionId.invokerRedis)
   }
 
   def updateRuntimeData(data: List[(String,Double,Double)]) : Unit = {
@@ -371,7 +371,7 @@ case class RedisAwareLoadBalancerState(
     nodeMap = mutable.Map.empty[String, ConsistentCacheInvokerNode]
 
     logging.info(this,
-      s"loadbalancer invoker status updated. num invokers = ${newSize}, length of _consistentHashList = ${_consistentHashList.size}, invokerCores = ${lbConfig.invoker.cores} c = ${lbConfig.invoker.c}")(
+      s"loadbalancer invoker status updated. num invokers = ${newSize}, length of _consistentHashList = ${_consistentHashList.size}, invokerCores = ${lbConfig.invoker.cores} c = ${lbConfig.invoker.c} boundedCeil = ${lbConfig.invoker.boundedCeil}")(
       TransactionId.loadbalancer)
   }
 

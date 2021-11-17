@@ -243,6 +243,7 @@ object TransactionId {
   val invokerColdstart = TransactionId(systemPrefix + "invokerColdstart") //Invoker cold start thread
   val invokerNanny = TransactionId(systemPrefix + "invokerNanny") // Invoker nanny thread
   val invokerRedis = TransactionId(systemPrefix + "invokerRedis") // Invoker nanny thread
+  val invokerRandom = TransactionId(systemPrefix + "invokerRandom") // Invoker nanny thread
   val dispatcher = TransactionId(systemPrefix + "dispatcher") // Kafka message dispatcher
   val loadbalancer = TransactionId(systemPrefix + "loadbalancer") // Loadbalancer thread
   val invokerHealth = TransactionId(systemPrefix + "invokerHealth") // Invoker supervision
