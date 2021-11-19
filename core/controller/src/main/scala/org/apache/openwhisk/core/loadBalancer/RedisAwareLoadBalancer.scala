@@ -38,17 +38,22 @@ import org.apache.openwhisk.common.LoggingMarkers._
 import org.apache.openwhisk.core.{ConfigKeys, WhiskConfig}
 import org.apache.openwhisk.spi.SpiLoader
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, ExecutionContext}
 import scala.collection.JavaConverters._
 import java.util.concurrent.atomic.AtomicInteger
 // import scala.math.{min} //, max}
 import scala.collection.mutable
+import scala.collection.immutable
 
 import org.ishugaliy.allgood.consistent.hash.{HashRing, ConsistentHash}
 import org.ishugaliy.allgood.consistent.hash.node.{Node}
 import redis.clients.jedis.{Jedis}
 import spray.json._
 import org.apache.openwhisk.common.RedisPacketProtocol._
+import sys.process._
+import java.time.Instant
+import java.util.concurrent.Semaphore
+import scala.concurrent.duration._
 
 /**
  * A loadbalancer that schedules workload based on 
@@ -183,6 +188,7 @@ abstract class RedisAwareLoadBalancer(
         } 
     }
     schedulingState.emitMetrics()
+    // schedulingState.ncPingInvokers()
   }  
 }
 
@@ -218,12 +224,50 @@ case class RedisAwareLoadBalancerState(
   var minuteLoadAvg: mutable.Map[InvokerInstanceId, Double] = mutable.Map.empty[InvokerInstanceId, Double],
   private var nodeMap: mutable.Map[String, ConsistentCacheInvokerNode] = mutable.Map.empty[String, ConsistentCacheInvokerNode],
 
+  private var invoker_ips: immutable.Map[Int, String] = Map(0 -> "v-020.victor.futuresystems.org", 1 -> "v-020.victor.futuresystems.org",
+                                                        2 -> "v-021.victor.futuresystems.org", 3 -> "v-021.victor.futuresystems.org",
+                                                        4 -> "v-021.victor.futuresystems.org", 5 -> "v-022.victor.futuresystems.org", 
+                                                        6 -> "v-022.victor.futuresystems.org", 7 -> "v-022.victor.futuresystems.org"),
+  private var invoker_ports: immutable.Map[Int, String] = Map(0 -> "45681", 1 -> "45682", 2 -> "45683", 
+                                                        3 -> "45684", 4 -> "45685", 5 -> "45686", 
+                                                        6 -> "45687", 7 -> "45688"),
+  private var lastStartInvokMilis: Long = 0,
+  private var wakeInvokerSem: Semaphore = new Semaphore(1, false),
+
+
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
     loadConfigOrThrow[ShardingContainerPoolBalancerConfig](ConfigKeys.loadbalancer))(implicit logging: Logging) {
 
   /** Getters for the variables, setting from the outside is only allowed through the update methods below */
   def invokers: IndexedSeq[InvokerHealth] = _invokers
+
+  def ncPingInvokers() : Unit = {
+    for (invoker <- _invokers) {
+      val ip = invoker_ips get invoker.id.instance
+      val port = invoker_ports get invoker.id.instance
+      ip match {
+        case Some(addr) => {
+          val out = new mutable.ListBuffer[String]
+          val err = new mutable.ListBuffer[String]
+          // val cmd = s"bash \"{ echo 'info status'; sleep 1; } | telnet $addr ${port.get}\""
+          val args : Seq[String] = Seq("bash", "-c",  s"{ echo 'info status'; sleep 1; } | telnet $addr ${port.get}")
+          logging.info(this, s"ping command for $invoker: ${args.mkString(" ")}")(TransactionId.invokerRedis)
+          val process = args.run(ProcessLogger(o => out += o, e => err += e))
+            process.exitValue() match {
+              case 0 => {
+                logging.info(this, s"ping data for $invoker: ${out.mkString("\n")}")(TransactionId.invokerRedis)
+              }
+              case _ => logging.error(this, s"ping failed: $err")(TransactionId.invokerRedis)
+            }
+          }
+          
+        case None => logging.error(this, s"bad invoker id? $invoker")(TransactionId.invokerRedis)
+        }
+      }
+
+
+  }
 
   def locateNode(name: String) : Option[ConsistentCacheInvokerNode] = {
     val found = nodeMap get name
@@ -336,8 +380,62 @@ case class RedisAwareLoadBalancerState(
     }
   }
 
-  protected def wakeUpInvoker() : Future[Unit] = {
-    return Future.successful(())
+  def wakeUpInvoker()(implicit logging: Logging, actorSystem: ActorSystem) : Unit = {
+    val now = Instant.now().toEpochMilli()
+
+    if (! lbConfig.horizScale) {
+      return;
+    }
+
+    if ((now - lastStartInvokMilis) / 1000 < 60) {
+      return;
+    }
+
+    val acquired = wakeInvokerSem.tryAcquire()
+
+    if (!acquired) {
+      return;
+    }
+
+    lastStartInvokMilis = now;
+    implicit val ec: ExecutionContext = actorSystem.dispatcher
+
+    actorSystem.scheduler.scheduleOnce(Duration.Zero) {
+      logging.info(this, s"Launching new invoker")(TransactionId.invokerRedis)
+      val down = _invokers.filter(invoker => ! invoker.status.isUsable)
+
+      if (down.isEmpty) {
+        logging.info(this, s"No downed invokers to start")(TransactionId.invokerRedis)
+        return;
+      }
+
+      val chosen = down(0).id.instance
+
+      val ip = invoker_ips get chosen
+      val port = invoker_ports get chosen
+      ip match {
+        case Some(addr) => {
+          val out = new mutable.ListBuffer[String]
+          val err = new mutable.ListBuffer[String]
+          // val cmd = s"bash \"{ echo 'info status'; sleep 1; } | telnet $addr ${port.get}\""
+          val args : Seq[String] = Seq("bash", "-c",  s"{ echo 'cont'; sleep 1; } | telnet $addr ${port.get}")
+          logging.info(this, s"Cont invoker command ${down(0).id}: ${args.mkString(" ")}")(TransactionId.invokerRedis)
+          val process = args.run(ProcessLogger(o => out += o, e => err += e))
+            process.exitValue() match {
+              case 0 => {
+                logging.info(this, s"Cont result ${down(0).id}: ${out.mkString("\n")}")(TransactionId.invokerRedis)
+              }
+              case _ => logging.error(this, s"Cont failed: $err")(TransactionId.invokerRedis)
+            }
+          }
+          
+        case None => logging.error(this, s"bad invoker id? ${down(0).id}")(TransactionId.invokerRedis)
+      }
+
+      wakeInvokerSem.release()
+    }
+
+    return;
   }
 
   /**

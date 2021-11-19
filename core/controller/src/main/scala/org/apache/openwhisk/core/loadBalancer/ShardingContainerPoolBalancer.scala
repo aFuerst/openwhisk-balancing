@@ -614,7 +614,8 @@ case class ShardingContainerPoolBalancerConfig(invoker: InvokerLoadConfig,
                                                timeoutFactor: Int,
                                                timeoutAddon: FiniteDuration,
                                                loadStrategy: String,
-                                               algorithm: String)
+                                               algorithm: String,
+                                               horizScale: Boolean)
 
 /**
  * State kept for each activation slot until completion.

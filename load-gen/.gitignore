@@ -26,8 +26,10 @@ load/testlocust/
 load/transaction/
 load/vary_users/
 load/compare/
-load/compare2/
-load/compare1.5/
+load/compare-2.0/
+load/compare-1.5/
 load/vary-ceil/
+load/30min-compare/
+load/*.log
 
 analysis/**/*png

@@ -220,7 +220,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     loadStrategy: String,
     algo: String,
     probabliltyState: RandomGenerationState)
-    (implicit logging: Logging, transId: TransactionId) : Option[InvokerInstanceId] = {
+    (implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {
     totalActivations.increment()      
     // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")(transId)
 
@@ -263,6 +263,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         /* went around enough, give up */
         if (chain_len > 0) {
           logging.info(this, s"Activation ${activationId} was pushed full circle ${chain_len} places to ${node.invoker}, from ${orig_invoker}")(transId)
+          schedulingState.wakeUpInvoker()
         }
         schedulingState.updateTrackingData(node, loadStrategy)
         return Some(node.invoker)
@@ -275,7 +276,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     fqn: FullyQualifiedEntityName, 
     schedulingState: RedisAwareLoadBalancerState, 
     activationId: ActivationId, 
-    loadStrategy: String)(implicit logging: Logging, transId: TransactionId) : Option[InvokerInstanceId] = {
+    loadStrategy: String)(implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {
     
     val strName = s"${fqn.namespace}/${fqn.name}"
     val possNode = schedulingState.locateNode(strName)
@@ -317,6 +318,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
           }
         }
         logging.info(this, s"unpopular Activation ${activationId} was pushed back around to original node, ${original_node.invoker}")(transId)
+        schedulingState.wakeUpInvoker()
         /* went around enough, give up */
         schedulingState.updateTrackingData(original_node, loadStrategy)
         return Some(original_node.invoker)
