@@ -62,7 +62,6 @@ class RandomForwardLoadBalancer(
                                                         schedulingState, 
                                                         msg.activationId, 
                                                         lbConfig.loadStrategy,
-                                                        lbConfig.algorithm,
                                                         probabliltyState)
 
     chosen.map { invoker => 
@@ -218,7 +217,6 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     schedulingState: RedisAwareLoadBalancerState,
     activationId: ActivationId,
     loadStrategy: String,
-    algo: String,
     probabliltyState: RandomGenerationState)
     (implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {
     totalActivations.increment()      
@@ -241,10 +239,11 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         val orig_invoker = node.invoker
         val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == orig_invoker)
 
-        val max_chain = schedulingState.invokers.length
+                        // hash list has one node per healthy invoker
+        val max_chain = schedulingState._consistentHashList.length
 
         for (i <- 0 to max_chain) {
-          val id = (idx + i) % schedulingState.invokers.length
+          val id = (idx + i) % schedulingState._consistentHashList.length
           node = schedulingState._consistentHashList(id)
           val serverLoad = schedulingState.getLoad(node, loadStrategy)
 

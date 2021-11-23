@@ -51,8 +51,7 @@ class ConsistentCacheLoadBalancer(
       val chosen = ConsistentCacheLoadBalancer.schedule(action.fullyQualifiedName(true),
                                                         schedulingState, 
                                                         msg.activationId, 
-                                                        lbConfig.loadStrategy,
-                                                        lbConfig.algorithm)
+                                                        lbConfig.loadStrategy)
 
     chosen.map { invoker => 
       // MemoryLimit() and TimeLimit() return singletons - they should be fast enough to be used here
@@ -124,8 +123,7 @@ object ConsistentCacheLoadBalancer extends LoadBalancerProvider {
     fqn: FullyQualifiedEntityName,
     schedulingState: RedisAwareLoadBalancerState,
     activationId: ActivationId,
-    loadStrategy: String,
-    algo: String)
+    loadStrategy: String)
     (implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
       // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
 

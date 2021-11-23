@@ -133,8 +133,7 @@ class RoundRobinLB(
       val chosen = RoundRobinLB.schedule(action.fullyQualifiedName(true),
                                                         schedulingState, 
                                                         msg.activationId, 
-                                                        lbConfig.loadStrategy,
-                                                        lbConfig.algorithm)
+                                                        lbConfig.loadStrategy)
 
     chosen.map { invoker => 
       // MemoryLimit() and TimeLimit() return singletons - they should be fast enough to be used here
@@ -218,8 +217,7 @@ object RoundRobinLB extends LoadBalancerProvider {
     fqn: FullyQualifiedEntityName,
     state: RoundRobinLBState,
     activationId: ActivationId,
-    loadStrategy: String,
-    algo: String)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
+    loadStrategy: String)(implicit logging: Logging, transId: TransactionId): Option[InvokerInstanceId] = {
       logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
       state.roundRobin()
     }

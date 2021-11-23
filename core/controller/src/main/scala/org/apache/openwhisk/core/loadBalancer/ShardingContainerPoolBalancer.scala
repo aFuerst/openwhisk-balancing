@@ -614,7 +614,6 @@ case class ShardingContainerPoolBalancerConfig(invoker: InvokerLoadConfig,
                                                timeoutFactor: Int,
                                                timeoutAddon: FiniteDuration,
                                                loadStrategy: String,
-                                               algorithm: String,
                                                horizScale: Boolean)
 
 /**

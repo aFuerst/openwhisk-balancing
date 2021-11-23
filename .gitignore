@@ -21,6 +21,7 @@ results
 !/ansible/environments/bal-distrib
 !/ansible/environments/local-distrib
 !/ansible/environments/host-distrib
+!/ansible/environments/max-distrib
 
 # Eclipse
 bin/

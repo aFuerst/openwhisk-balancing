@@ -30,6 +30,7 @@ load/compare-2.0/
 load/compare-1.5/
 load/vary-ceil/
 load/30min-compare/
+load/vary-ceil-30min/
 load/*.log
 
 analysis/**/*png
