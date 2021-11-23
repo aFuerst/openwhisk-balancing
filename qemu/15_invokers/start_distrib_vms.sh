@@ -9,16 +9,24 @@ user='ow'
 pw='OwUser'
 
 # will be using IP addr 172.29.200.161-8
-for VMID in {0..8}
+for VMID in {0..15}
 do
 
 mac="06:01:02:03:04:0$VMID"
-tel="127.0.0.1:4568$VMID"
 tel=":4568$VMID"
+if [ $VMID -gt 9 ];
+then
+tel=":456$VMID"
+fi
 debug="debug-$VMID.log"
 net="mynet$VMID"
 
-SERVER=$(($VMID/3))
+SERVER=0
+if [ $VMID -lt 4 ]; then
+SERVER=2
+elif [ $VMID -lt 10 ]; then
+SERVER=1
+fi
 
 CPUS=4
 if [ $VMID == 0 ]
@@ -45,7 +53,7 @@ qemu-img create -f qcow2 \
 sudo qemu-system-x86_64 \
     -enable-kvm \
     -smp cpus=$CPUS -cpu host \
-    -m 50G \
+    -m 30G \
     -daemonize \
     -nographic \
     -display none \

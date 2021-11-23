@@ -1,13 +1,16 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=f2e73d1d-58cf-4e57-9847-8bc9320b54a8:3sarpHMfRUAAo3Q90feIzukEDoc5pmhy7XQ1x7cT1xgEiQQ0ijB52F0MZFqfUBtW
+export AUTH=261800bd-2466-4972-903e-032f18162eac:tkBt0RNt5BgZE8lxQMzNcPHSDv8yYEWHXpv0YVtCTfVdV2xfogHmAG28N4U5l73F
 
-for USERS in 30 40 50 60 70 80
+for ITERATION in {0..3}
+do
+
+for USERS in 50 60 70
 do
 
 # BoundedLoadsLoadBalancer RoundRobinLB ShardingContainerPoolBalancer
-for BALANCER in RandomForwardLoadBalancer BoundedLoadsLoadBalancer RoundRobinLB ShardingContainerPoolBalancer
+for BALANCER in BoundedLoadsLoadBalancer RandomForwardLoadBalancer RoundRobinLB ShardingContainerPoolBalancer
 do
 
 MEMORY="10G"
@@ -23,7 +26,7 @@ redisPass='OpenWhisk'
 redisPort=6379
 ansible=/home/ow/openwhisk-caching/ansible
 
-BASEPATH="compare1.5"
+BASEPATH="30min-compare/$ITERATION/"
 
 r=5
 warmup=$(($USERS/$r))
@@ -36,12 +39,12 @@ pw='OwUser'
 cmd="cd $ansible; echo $ENVIRONMENT; export OPENWHISK_TMP_DIR=$whisk_logs_dir; 
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean;
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e redis_port=$redisPort -e redis_pass=$redisPass;
-ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=4 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.0 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=1.5 -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER"
+ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=4 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=1.5 -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER -e controller_horizscale=false"
 ANSIBLE_HOST="$user@172.29.200.161"
 sshpass -p $pw ssh $ANSIBLE_HOST "$cmd" &> "$pth/logs.txt"
 
 
-locust --headless --users $USERS -r $r -f locustfile-transaction.py --csv "$pth/logs" --log-transactions-in-file --run-time 10m &>> "$pth/logs.txt"
+locust --headless --users $USERS -r $r -f locustfile-transaction.py --csv "$pth/logs" --log-transactions-in-file --run-time 30m &>> "$pth/logs.txt"
 python3 locust_parse.py "$pth/logs_transactions.csv"
 
 sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/controller0/controller0_logs.log" $pth
@@ -72,3 +75,4 @@ done
 python3 ../analysis/compare_function.py "./$BASEPATH/" $USERS
 done
 
+done

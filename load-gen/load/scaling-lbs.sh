@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=2f25561f-a65b-49c4-9543-9339182db527:XLjTkvx1R2IrCfmH9EPl19ZExhwbJcenDL6D5jUMypTz8jq1sn1LRzZTJG3C8X6i
+export AUTH=261800bd-2466-4972-903e-032f18162eac:tkBt0RNt5BgZE8lxQMzNcPHSDv8yYEWHXpv0YVtCTfVdV2xfogHmAG28N4U5l73F
 
 for ITERATION in {0..2}
 do
@@ -53,7 +53,7 @@ then
 HOST="v-02$SERVER"
 
 echo "pausing invoker on $HOST $tel"
-echo 'pause' | nc $HOST $tel
+echo 'stop' | nc $HOST $tel
 fi
 
 done
@@ -64,6 +64,21 @@ python3 locust_parse.py "$pth/logs_transactions.csv"
 
 sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/controller0/controller0_logs.log" $pth
 sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/nginx_access.log" $pth
+
+for VMID in {1..8}
+do
+
+tel="4568$VMID"
+SERVER=$(($VMID/3))
+if [ $SERVER -ne 2 ];
+then
+HOST="v-02$SERVER"
+
+echo "restarting invoker on $HOST $tel"
+echo 'c' | nc $HOST $tel
+fi
+
+done
 
 
   for VMID in {1..8}
