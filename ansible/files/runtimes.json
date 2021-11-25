@@ -20,7 +20,7 @@
               "image": {
                   "prefix": "openwhisk",
                   "name": "action-nodejs-v12",
-                  "tag": "nightly"
+                  "tag": "lateast"
               },
               "deprecated": false,
               "attached": {
@@ -34,7 +34,7 @@
               "image": {
                   "prefix": "openwhisk",
                   "name": "action-nodejs-v14",
-                  "tag": "nightly"
+                  "tag": "lateast"
               },
               "deprecated": false,
               "attached": {
@@ -63,7 +63,7 @@
               "image": {
                   "prefix": "openwhisk",
                   "name": "action-python-v3.7",
-                  "tag": "nightly"
+                  "tag": "lateast"
               },
               "deprecated": false,
               "attached": {
@@ -77,7 +77,7 @@
               "image": {
                   "prefix": "openwhisk",
                   "name": "python3aiaction",
-                  "tag": "nightly"
+                  "tag": "lateast"
               },
               "deprecated": false,
               "attached": {
@@ -119,7 +119,7 @@
       {
           "prefix": "openwhisk",
           "name": "dockerskeleton",
-          "tag": "nightly"
+          "tag": "lateast"
       }
   ]
 }
