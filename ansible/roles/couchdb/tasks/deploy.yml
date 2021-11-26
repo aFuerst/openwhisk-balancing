@@ -59,7 +59,7 @@
 
 - name: "(re)start CouchDB from '{{ couchdb_image }} ' "
   vars:
-    couchdb_image: "{{ docker_registry~couchdb.docker_image | default(docker_registry ~ 'apache/couchdb:' ~ couchdb.version ) }}"
+    couchdb_image: "{{ couchdb.docker_image | default(docker_registry ~ 'apache/couchdb:' ~ couchdb.version ) }}"
   docker_container:
     name: couchdb
     image: "{{ couchdb_image }}"
