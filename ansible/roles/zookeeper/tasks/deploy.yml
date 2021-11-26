@@ -20,7 +20,7 @@
 - name: (re)start zookeeper
   docker_container:
     name: zookeeper{{ groups['zookeepers'].index(inventory_hostname) }}
-    image: "{{ docker_registry }}library/zookeeper:{{ zookeeper.version }}""
+    image: "{{ docker_registry }}library/zookeeper:{{ zookeeper.version }}"
     state: started
     recreate: true
     restart_policy: "{{ docker.restart.policy }}"
