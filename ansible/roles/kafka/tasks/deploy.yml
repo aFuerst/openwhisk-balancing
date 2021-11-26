@@ -84,7 +84,7 @@
 - name: "(re)start kafka using '{{ kafka_image }}' "
   vars:
     zookeeper_idx: "{{ groups['kafkas'].index(inventory_hostname) % (groups['zookeepers'] | length) }}"
-    kafka_image: "{{ kafka.docker_image | default ('wurstmeister/kafka:' ~ kafka.version) }}"
+    kafka_image: "{{ docker_registry~kafka.docker_image | default ( docker_registry ~ 'wurstmeister/kafka:' ~ kafka.version) }}"
   docker_container:
     name: kafka{{ groups['kafkas'].index(inventory_hostname) }}
     image: "{{ kafka_image }}"

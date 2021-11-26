@@ -20,7 +20,7 @@
 - name: (re)start apigateway
   docker_container:
     name: apigateway
-    image: "{{ apigateway.docker_image | default('openwhisk/apigateway:' ~ apigateway.version) }}"
+    image: "{{ docker_registry~apigateway.docker_image | default( docker_registry ~ 'openwhisk/apigateway:' ~ apigateway.version) }}"
     state: started
     recreate: true
     restart_policy: "{{ docker.restart.policy }}"
