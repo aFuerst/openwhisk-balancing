@@ -12,7 +12,9 @@ pw='OwUser'
 for VMID in {0..15}
 do
 
-mac="06:01:02:03:04:0$VMID"
+mac=$(printf '%x\n' $VMID)
+mac="06:01:02:03:04:0$mac"
+
 tel=":4568$VMID"
 if [ $VMID -gt 9 ];
 then
@@ -21,16 +23,15 @@ fi
 debug="debug-$VMID.log"
 net="mynet$VMID"
 
-SERVER=0
-if [ $VMID -lt 4 ]; then
 SERVER=2
+if [ $VMID -lt 4 ]; then
+SERVER=0
 elif [ $VMID -lt 10 ]; then
 SERVER=1
 fi
 
 CPUS=4
-if [ $VMID == 0 ]
-then
+if [ $VMID == 0 ]; then
 CPUS=12
 fi
 

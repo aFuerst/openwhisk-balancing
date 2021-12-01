@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=261800bd-2466-4972-903e-032f18162eac:tkBt0RNt5BgZE8lxQMzNcPHSDv8yYEWHXpv0YVtCTfVdV2xfogHmAG28N4U5l73F
+export AUTH=42ee12c7-1836-4224-b037-639a3d459f20:E2NdkYCCHBtvRrlj4i6Ycv2q6L2t29shRuHY6DE4oAmxGeL6704fkXDTMqUMaa83
 
 USERS=100
 for USERS in {100..500..50}
@@ -55,14 +55,15 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
   do
 
   INVOKERID=$(($VMID-1))
-  IP=$(($VMID+1))
+  # IP=$(($VMID+1))
+  IP="172.29.200.$((161 + $base))"
 
   name="invoker$INVOKERID"
   pth="/home/ow/openwhisk-logs/wsklogs/"
   pth+="$name/"
   pth+="$name"
   pth+="_logs.log"
-  sshpass -p $pw scp "$user@172.29.200.16$IP:$pth" $DEST
+  sshpass -p $pw scp "$user@$IP:$pth" $DEST
 
   done
 python3 ../analysis/plot_invoker_load.py $DEST $USERS

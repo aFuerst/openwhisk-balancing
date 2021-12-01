@@ -4,9 +4,9 @@
 
 pw='OwUser'
 
-for base in {0..16}
+for base in {0..15}
 do
-  IP="172.29.200.16$base"
+  IP="172.29.200.$((161 + $base))"
   ping $IP -q -c 1 &> /dev/null
 
   if [ "$?" = 0 ];
@@ -17,8 +17,8 @@ docker rm -f \$(docker ps -aq);
 docker system prune -f;
 docker rmi alfuerst/controller:latest;
 docker rmi alfuerst/invoker:latest;
-docker pull alfuerst/controller:latest;
-docker pull alfuerst/invoker:latest;
+docker pull v-019.victor.futuresystems.org:5000/alfuerst/controller:latest;
+docker pull v-019.victor.futuresystems.org:5000/alfuerst/invoker:latest;
 cd /home/ow/openwhisk-caching;
 git pull"
 

@@ -1,3 +1,4 @@
+from subprocess import run
 from locust import HttpUser, task, constant, events, between, TaskSet, SequentialTaskSet, LoadTestShape
 from locust_plugins.transaction_manager import TransactionManager
 import little
@@ -9,6 +10,7 @@ import copy
 
 host = os.environ["HOST"]
 auth = os.environ["AUTH"]
+users = os.environ["USER_TOT"]
 
 class Action:
   def __init__(self, name, url, warmtime, coldtime, freq_class):
@@ -22,34 +24,16 @@ class Action:
       return "{}, {}".format(self.name, self.freq_class)
 
 set_properties(host=host, auth=auth)
-normal_action_dict = {}
-bursty_action_dict = {}
+action_dict = {}
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
   path = os.path.join("../ow-actions", zip_file)
   for freq in [1, 5, 16, 40]:
     name = action_name + "_" + str(freq)
     url = add_web_action(name, path, container, memory=memory, host=host)
-    url  = ""
-    normal_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
+    action_dict[name] = Action(name, url, warm_time, cold_time, freq)
 
-for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
-  path = os.path.join("../ow-actions", zip_file)
-  for freq in [1, 5, 16, 40]:
-    if (action_name == "aes" or action_name == "gzip") and freq == 40:
-      freq = 160
-    name = action_name + "_" + str(freq)
-    url = add_web_action(name, path, container, memory=memory, host=host)
-    url  = ""
-    bursty_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
-
-# bursty_action_dict = copy.deepcopy(normal_action_dict)
-# bursty_action_dict["aes_110"].freq_class = 500
-# bursty_action_dict["gzip_110"].freq_class = 500
-acts, normal_freqs = little._toWeightedData(normal_action_dict)
-_, bursty_freqs = little._toWeightedData(bursty_action_dict)
-freqs = normal_freqs
-
+acts, freqs = little._toWeightedData(action_dict)
 
 class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
      
@@ -64,10 +48,6 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
     global freqs
     action = random.choices(population=acts, weights=freqs, k=1)[0]
     t = time()
-    sleep(1)
-    print(action.name)
-    # self.client.get("www.google.com", verify=False)
-    return
     invoke_name = action.name + "-" + str(t)
     self.tm.start_transaction(invoke_name)
     r = self.client.get(action.url, verify=False)
@@ -122,31 +102,32 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
     failure_msg = str(failure_msg) + " : "  + str(lat) + " : " + str(activation_id)
     self.tm.end_transaction(success=success, transaction_name=invoke_name, failure_message=failure_msg)
  
-class BurstyShape(LoadTestShape):
-  spawn_rate = 20
-  bursty = False
-  length = 60
-
-  def tick(self):
-    run_time = round(self.get_run_time())
-
-    if run_time % 10 == 0:
-      global freqs
-      if self.bursty:
-        print("{} going normal------------------------------------------------------------------------------------------------------------------".format(run_time))
-        freqs = normal_freqs
-        self.bursty = False
-      else:
-        print("{} going bursty------------------------------------------------------------------------------------------------------------------".format(run_time))
-        freqs = bursty_freqs
-        self.bursty = True
-    else:
-      print(run_time)
-    if run_time > self.length:
-      return None
-    return (100, self.spawn_rate)
-
 class TransactionalLoad(HttpUser):
   wait_time = between(0, 1)
   host = host
   tasks = [TransactionalWaitForFunctionCoplete]
+
+class BurstyShape(LoadTestShape):
+  spawn_rate = 20
+  bursty = False
+  length = 60*5
+  targest_users = int(users)
+  curr_users = 1
+  last_t = 0
+
+  def tick(self):
+    run_time = round(self.get_run_time())
+    # print("tick", run_time)
+
+    if run_time % 5 == 0 and run_time != self.last_t:
+        self.last_t = run_time
+        self.curr_users += 1
+        if self.curr_users >= self.targest_users:
+          self.curr_users = self.targest_users
+        print("increasing users to", self.curr_users, " at ", run_time)
+    else:
+      pass
+    if run_time > self.length:
+      return None
+    return (self.curr_users, self.spawn_rate)
+

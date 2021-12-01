@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib as mpl
 mpl.rcParams.update({'font.size': 14})
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,15 +22,15 @@ shard_str = "ShardingContainerPoolBalancer"
 base_file = "parsed_successes.csv"
 
 out=[]
-warm_times = [0.055, 1.939, 1.184, 0.044, 0.352, 0.034, 6.365, 0.049, 8.357, 0.633, 7.0, 0.279]
-actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
-tmp = pd.read_csv(os.path.join(path, "{}-{}".format(count, bound_str), base_file))
-func_names = tmp["function"].unique()
-for warm_time, k in zip(warm_times, actions):
-  for name in func_names:
-    if k in name:
-      out.append((name,warm_time))
-warm_times = pd.DataFrame(out,columns=['function',"warm"])
+# warm_times = [0.055, 1.939, 1.184, 0.044, 0.352, 0.034, 6.365, 0.049, 8.357, 0.633, 7.0, 0.279]
+# actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
+# tmp = pd.read_csv(os.path.join(path, "{}-{}".format(count, bound_str), base_file))
+# func_names = tmp["function"].unique()
+# for warm_time, k in zip(warm_times, actions):
+#   for name in func_names:
+#     if k in name:
+#       out.append((name,warm_time))
+# warm_times = pd.DataFrame(out,columns=['function',"warm"])
 
 def get_warm_times(df):
   warmed = df[df["cold"] == False]
@@ -94,8 +96,20 @@ def compare(numerator_str, denom_str):
 
   r2_ch_rl = numerator['Wnorm']/denom['Wnorm']
   # print(r2_ch_rl)
-  ax.hlines(1.0, xmin=0, xmax=len(r2_ch_rl), color='red')
-  ax.plot(sorted(r2_ch_rl),marker='o',alpha=0.3)
+  ax.hlines(1.0, xmin=-0.1, xmax=len(r2_ch_rl)-.9, color='black')
+
+  # ax.plot(sorted(r2_ch_rl),marker='o',alpha=0.3)
+
+  ymin = []
+  ymax = []
+  for pt in sorted(r2_ch_rl):
+    if pt <= 1:
+      ymin.append(pt)
+      ymax.append(1)
+    else:
+      ymin.append(1)
+      ymax.append(pt)
+  ax.vlines([i for i in range(len(ymin))],ymin,ymax)
 
   # ax.set_ylabel("Invoker {}".format(metric))
   # ax.set_xlabel("Normalized latency")

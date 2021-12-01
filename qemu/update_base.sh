@@ -45,7 +45,7 @@ sshpass -p $pw ssh "ow@$IP" "docker pull alfuerst/invoker:latest"
 sshpass -p $pw ssh "ow@$IP" "cd /home/ow/openwhisk-caching; git pull"
 
 # kill VM
-echo 'q' | nc 127.0.0.1 45680
+# echo 'q' | nc 127.0.0.1 45680
 
-scp /extra/alfuerst/qemu-imgs/openwhisk-cache-ubu.img v-021:/extra/alfuerst/qemu-imgs/openwhisk-cache-ubu.img
-scp /extra/alfuerst/qemu-imgs/openwhisk-cache-ubu.img v-020:/data2/alfuerst/qemu-imgs/openwhisk-cache-ubu.img
+# scp /extra/alfuerst/qemu-imgs/openwhisk-cache-ubu.img v-021:/extra/alfuerst/qemu-imgs/openwhisk-cache-ubu.img
+# scp /extra/alfuerst/qemu-imgs/openwhisk-cache-ubu.img v-020:/data2/alfuerst/qemu-imgs/openwhisk-cache-ubu.img

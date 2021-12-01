@@ -5,6 +5,8 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.patches as mpatches
 mpl.rcParams.update({'font.size': 14})
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -14,6 +16,21 @@ parser.add_argument("--users", type=int, default=100, required=False)
 args = parser.parse_args()
 
 # users = args.users
+
+out=[]
+warm_times = [0.055, 1.939, 1.184, 0.044, 0.352, 0.034, 6.365, 0.049, 8.357, 0.633, 7.0, 0.279]
+actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
+path = os.path.join(args.path[0], "parsed_successes.csv")
+tmp = pd.read_csv(path)
+func_names = tmp["function"].unique()
+for warm_time, k in zip(warm_times, actions):
+  for name in func_names:
+    if k in name:
+      out.append((name,warm_time))
+warm_times = pd.DataFrame(out,columns=['function',"warm"])
+warm_times.index = warm_times['function']
+# print(warm_times)
+# print(float(warm_times[warm_times['function'] == 'aes_1']['warm']))
 
 def path_to_key(pth):
   # print(pth)
@@ -61,10 +78,12 @@ def plot(paths, users, warm):
 
       grouped = df.groupby(by="function")
       for name, group in grouped:
-        data[name] += group["latency"].mean() / mean_sums[name]
+        data[name] += group["latency"].mean()
 
     for name in data.keys():
-      data[name] /= len(dfs)
+      data[name] /= (len(dfs) * float(warm_times[warm_times['function'] == name]['warm']))
+    # print(sorted(data.items(), key=lambda x: x[0]))
+    # return
     pts.append(list(data.values()))
     # pts.append(box_pts)
     labels.append(key)
@@ -83,7 +102,8 @@ def plot(paths, users, warm):
   #   new_labs.append(wanted[len("compare-"):])
 
   poss = [2*i for i in range(len(pts))]
-  ax.boxplot(pts, labels=labels, positions=poss)
+  ax.boxplot(pts, labels=labels, positions=poss, showfliers=False)
+  # ax.set_yscale('log')
   handles = []
   leg_labels=[]
   ax2.plot(poss, tputs, 'o', color="tab:red")

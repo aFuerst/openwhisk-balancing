@@ -19,10 +19,10 @@ then
 tel=":456$VMID"
 fi
 
-SERVER=0
-if [ $VMID -lt 4 ]; then
 SERVER=2
-elif [ $VMID -lt 10 ]; then
+if [ $VMID -lt 3 ]; then
+SERVER=0
+elif [ $VMID -lt 6 ]; then
 SERVER=1
 fi
 debug="debug-$VMID.log"

@@ -31,6 +31,8 @@ import org.apache.openwhisk.spi.SpiLoader
 
 import scala.concurrent.Future
 import scala.math.{min}
+import scala.util.Random
+
 /**
  * A loadbalancer that schedules workload based on power-of-two consistent hashing-algorithm.
  */
@@ -135,10 +137,10 @@ object BoundedLoadsLoadBalancer extends LoadBalancerProvider {
       var node = possNode.get()
       val orig_invoker = node.invoker
       val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == orig_invoker)
-      val cutoff = min(schedulingState.invokers.length, loadCuttoff).toInt
+      val cutoff = min(schedulingState._consistentHashList.size, loadCuttoff).toInt
 
       for (i <- 0 to cutoff) {
-        val id = (idx + i) % schedulingState.invokers.length
+        val id = (idx + i) % schedulingState._consistentHashList.length
         node = schedulingState._consistentHashList(id)
         val serverLoad = schedulingState.getLoad(node, loadStrategy)
 
@@ -152,7 +154,8 @@ object BoundedLoadsLoadBalancer extends LoadBalancerProvider {
         }
       }
       /* went around enough, give up */
-      logging.info(this, s"Exhausted all invokers, starting at ${orig_invoker} sending to ${node.invoker}")
+      node = schedulingState._consistentHashList(Random.nextInt(schedulingState._consistentHashList.size))
+      logging.info(this, s"Activation ${activationId} was pushed full circle; randomly sending to ${node.invoker}r}")(transId)
       schedulingState.updateTrackingData(node, loadStrategy)
       return Some(node.invoker)
     }

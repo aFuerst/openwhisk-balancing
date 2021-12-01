@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib as mpl
 mpl.rcParams.update({'font.size': 14})
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np

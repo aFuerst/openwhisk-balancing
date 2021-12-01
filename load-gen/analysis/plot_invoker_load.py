@@ -4,6 +4,8 @@ from numpy import dtype
 import pandas as pd
 import matplotlib as mpl
 mpl.rcParams.update({'font.size': 14})
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -15,7 +17,11 @@ users = 100
 if len(sys.argv) > 2:
   users = int(sys.argv[2])
 
+def date_idx_to_min(idx):
+  return (idx.second + idx.minute*60) / 60
+
 def plot(path, metric):
+  metric, nice_name = metric
   fig, ax = plt.subplots()
   plt.tight_layout()
   fig.set_size_inches(5,3)
@@ -23,6 +29,8 @@ def plot(path, metric):
   colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:olive"]
   mean_df = None
   save_pth = path
+
+  invoker_cols = []
 
   for i in range(8):
     file = os.path.join(path, "invoker{}_logs.log".format(i))
@@ -53,13 +61,15 @@ def plot(path, metric):
     df = df[df["usedMem"] > 128.0]
     df = df.resample("S").mean().interpolate()
     df.index = df.index - (df.index[0] - time_min)
-    ax.plot(df.index, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
+    xs = date_idx_to_min(df.index)
+    ax.plot(xs, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
     # limit = max(limit, df.index[-1])
     # time_min = min(time_min, df.index[0])
     # print(df) #.describe())
 
     # print(mean_df)
     new_col = "{}_{}".format(i, metric)
+    invoker_cols.append(new_col)
     if mean_df is None:
       renamed = df.rename(columns= {metric : new_col})
 
@@ -68,20 +78,24 @@ def plot(path, metric):
       renamed = df.rename(columns= {metric : new_col})
       mean_df = mean_df.join(renamed[[new_col]])
 
+  times = date_idx_to_min(mean_df.index)
   if "mem" in metric.lower():
-    ax.hlines(10*1024, time_min, mean_df.index[-1], color='red')
-  mean_df["present"] = mean_df.notnull().sum(axis=1)
-  mean_df["mean"] = mean_df.sum(axis=1) / mean_df.notnull().sum(axis=1)
+    ax.hlines(10*1024, times[0], times[-1], color='red')
+  mean_df["present"] = mean_df[invoker_cols].notnull().sum(axis=1)
+  mean_df["mean"] = mean_df[invoker_cols].sum(axis=1) / mean_df["present"]
+  mean_df["std"] = mean_df[invoker_cols].std(axis=1)
 
-  ax.plot(mean_df.index, mean_df["mean"], label="Mean", color='k')
+  ax.plot(times, mean_df["mean"], label="Mean", color='k')
+  ax.plot(times, mean_df["mean"]+mean_df["std"], label="mean std", color='k', linestyle='dashed')
+  ax.plot(times, mean_df["mean"]-mean_df["std"], color='k', linestyle='dashed')
 
-  ax.set_ylabel(metric)
-  ax.set_xlabel("Time (sec)")
+  ax.set_ylabel(nice_name)
+  ax.set_xlabel("Time (min)")
   # xticks = ax.get_xticks()
   # xticks /= 60
   # xticks = [round(x) for x in xticks]
   # print(xticks)
-  ax.set_xticklabels(ax.get_xticks(), rotation=45, rotation_mode="anchor")
+  # ax.set_xticklabels(ax.get_xticks(), rotation=45, rotation_mode="anchor")
   ax.legend() # bbox_to_anchor=(1.6,.6), loc="right", columnspacing=1
 
   save_fname = os.path.join(save_pth, "{}-{}.png".format(users, metric))
@@ -123,11 +137,12 @@ def plot(path, metric):
     max_t = max(mean_df.index)
     mean_df.index -= min_t 
     # print(min_t, max_t)
-    ax.plot(mean_df.index, mean_df["mean"], label="Mean Load", color='k')
+    # print(metric, mean_df.columns)
+    ax.plot(times, mean_df["mean"], label="Mean Load", color='k')
     ax.legend()
     save_fname = os.path.join(save_pth, "{}-{}.png".format(users, "load_vs_latency"))
     plt.savefig(save_fname, bbox_inches="tight")
     plt.close(fig)
 
-for metric in ["loadAvg", "usedMem", "containerActiveMem"]:
+for metric in [("loadAvg", "Load Average"), ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory")]:
   plot(path, metric=metric)

@@ -3,16 +3,16 @@
 for VMID in {0..8}
 do
 
-tel=":4568$VMID"
+tel="4568$VMID"
 if [ $VMID -gt 9 ];
 then
-tel=":456$VMID"
+tel="456$VMID"
 fi
 
-SERVER=0
-if [ $VMID -lt 4 ]; then
 SERVER=2
-elif [ $VMID -lt 10 ]; then
+if [ $VMID -lt 3 ]; then
+SERVER=0
+elif [ $VMID -lt 6 ]; then
 SERVER=1
 fi
 

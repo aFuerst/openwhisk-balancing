@@ -1,12 +1,12 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=261800bd-2466-4972-903e-032f18162eac:tkBt0RNt5BgZE8lxQMzNcPHSDv8yYEWHXpv0YVtCTfVdV2xfogHmAG28N4U5l73F
+export AUTH=036c13e2-c941-45b2-88eb-6c6f71bb9403:qtEgqx6xwz0n4IH4hb8ydoA2H48O9rxYmUgyj6vBNAdjBNnDnfr1Bjfg0ciCrPGi
 
 for CEIL in 1.0 1.3 1.5 1.7 2.0
 do
 
-for USERS in 50 60 70
+for USERS in 30 # 50 70
 do
 
 for ITERATION in {0..2}
@@ -25,7 +25,7 @@ redisPass='OpenWhisk'
 redisPort=6379
 ansible=/home/ow/openwhisk-caching/ansible
 
-BASEPATH="vary-ceil-30min/$ITERATION/compare-$CEIL"
+BASEPATH="/extra/alfuerst/vary-ceil-30min/$ITERATION/compare-$CEIL"
 
 r=5
 warmup=$(($USERS/$r))
@@ -43,7 +43,7 @@ ANSIBLE_HOST="$user@172.29.200.161"
 sshpass -p $pw ssh $ANSIBLE_HOST "$cmd" &> "$pth/logs.txt"
 
 
-locust --headless --users $USERS -r $r -f locustfile-transaction.py --csv "$pth/logs" --log-transactions-in-file --run-time 310m &>> "$pth/logs.txt"
+locust --headless --users $USERS -r $r -f locustfile-transaction.py --csv "$pth/logs" --log-transactions-in-file --run-time 30m &>> "$pth/logs.txt"
 python3 locust_parse.py "$pth/logs_transactions.csv"
 
 sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/controller0/controller0_logs.log" $pth
@@ -54,14 +54,15 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
   do
 
   INVOKERID=$(($VMID-1))
-  IP=$(($VMID+1))
+  # IP=$(($VMID+1))
+  IP="172.29.200.$((161 + $VMID))"
 
   name="invoker$INVOKERID"
   log_pth="/home/ow/openwhisk-logs/wsklogs/"
   log_pth+="$name/"
   log_pth+="$name"
   log_pth+="_logs.log"
-  sshpass -p $pw scp "$user@172.29.200.16$IP:$log_pth" $pth
+  sshpass -p $pw scp "$user@$IP:$log_pth" $pth
 
   done
 

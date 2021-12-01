@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.LongAdder
 import org.apache.openwhisk.core.{ConfigKeys, WhiskConfig}
 import pureconfig._
 import pureconfig.generic.auto._
+import scala.util.Random
 
 /**
  * A loadbalancer that schedules workload based on random-forwarding consistent hashing load balancer
@@ -239,7 +240,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         val orig_invoker = node.invoker
         val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == orig_invoker)
 
-                        // hash list has one node per healthy invoker
+        // hash list has one node per healthy invoker
         val max_chain = schedulingState._consistentHashList.length
 
         for (i <- 0 to max_chain) {
@@ -260,8 +261,9 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
           chain_len += 1
         }
         /* went around enough, give up */
+        node = schedulingState._consistentHashList(Random.nextInt(schedulingState._consistentHashList.size))
         if (chain_len > 0) {
-          logging.info(this, s"Activation ${activationId} was pushed full circle ${chain_len} places to ${node.invoker}, from ${orig_invoker}")(transId)
+          logging.info(this, s"Activation ${activationId} was pushed full circle ${chain_len} places; randomly sending to ${node.invoker}, from ${orig_invoker}")(transId)
           schedulingState.wakeUpInvoker()
         }
         schedulingState.updateTrackingData(node, loadStrategy)
@@ -287,7 +289,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         val loadCuttoff = schedulingState.getLoadCutoff(loadStrategy)
 
         val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
-        val chainLen = schedulingState.invokers.length
+        val chainLen = schedulingState._consistentHashList.length
         var times = schedulingState.runTimes.getOrElse(strName, (0.0, 0.0))
         var r: Double = 2.2
         if (times._1 != 0.0) {
@@ -296,7 +298,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         }
 
         for (i <- 0 to chainLen) {
-          var id = (idx + i) % schedulingState.invokers.length
+          var id = (idx + i) % schedulingState._consistentHashList.length
           node = schedulingState._consistentHashList(id)
           val serverLoad = schedulingState.getLoad(node, loadStrategy)
 
@@ -316,9 +318,12 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
             return Some(node.invoker)
           }
         }
-        logging.info(this, s"unpopular Activation ${activationId} was pushed back around to original node, ${original_node.invoker}")(transId)
-        schedulingState.wakeUpInvoker()
         /* went around enough, give up */
+        node = schedulingState._consistentHashList(Random.nextInt(schedulingState._consistentHashList.size))
+        if (chainLen > 0) {
+          logging.info(this, s"Activation ${activationId} was pushed full circle ${chainLen} places; randomly sending to ${node.invoker}, from ${original_node.invoker}")(transId)
+          schedulingState.wakeUpInvoker()
+        }
         schedulingState.updateTrackingData(original_node, loadStrategy)
         return Some(original_node.invoker)
       }
