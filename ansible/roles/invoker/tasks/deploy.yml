@@ -258,6 +258,7 @@
       "CONFIG_whisk_containerPool_evictionStrategy": "{{ invoker.evictionStrategy }}"
       "CONFIG_whisk_docker_client_parallelRuns": "{{ invoker_parallel_runs | default() }}"
       "CONFIG_whisk_docker_containerFactory_useRunc": "{{ invoker.useRunc | default(false) | lower }}"
+      "CONFIG_whisk_containerProxy_timeouts_idleContainer": "{{ invoker.idleContainer | default('10 minutes') }}"
       "WHISK_LOGS_DIR": "{{ whisk_logs_dir }}"
       "METRICS_KAMON": "{{ metrics.kamon.enabled | default(false) | lower }}"
       "METRICS_KAMON_TAGS": "{{ metrics.kamon.tags | default() | lower }}"
