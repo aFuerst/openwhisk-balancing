@@ -1,98 +1,48 @@
 from wsk_interact import *
 import os
 from time import time, sleep
-from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
 # import pandas as pd
-from random import randint
 
-host="https://172.29.200.161"
-auth="bae2d81d-835b-42b2-9659-8e82fa8e18c8:CymDv9WEzMVgVs4m07QlR1HSS0XOGHZNKw5Kia44Hl43RVsUk424xrD890PUea1L"
+host="https://172.29.200.161:10001"
+auth="036c13e2-c941-45b2-88eb-6c6f71bb9403:qtEgqx6xwz0n4IH4hb8ydoA2H48O9rxYmUgyj6vBNAdjBNnDnfr1Bjfg0ciCrPGi"
 
 set_properties(host=host, auth=auth)
-pool = ThreadPoolExecutor(max_workers=10000)
 class Action:
-  def __init__(self, name, url, warmtime, coldtime, freq_class):
+  def __init__(self, name, url, warmtime, coldtime):
     self.name = name
     self.url = url
     self.coldtime = coldtime
     self.warmtime = warmtime
-    self.freq_class = freq_class
 
 action_dict = {}
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
-  path = os.path.join("../py", zip_file)
-  for freq in [2, 20, 50]:
-    name = action_name + "_" + str(freq)
-    url = add_web_action(name, path, container, memory=memory, host=host)
-    action_dict[name] = Action(name, url, warm_time, cold_time, freq)
+  path = os.path.join("../ow-actions", zip_file)
+  url = add_web_action(action_name, path, container, memory=memory, host=host)
+  action_dict[action_name] = Action(action_name, url, warm_time, cold_time)
 
-trace_time_sec = 60 * 10
-eleven_mins_sec = 60 * 11
-trace = []
+cold_results = defaultdict(list)
+warm_results = defaultdict(list)
 
-class Invocation:
-  def __init__(self, name, time, url):
-    self.name = name
-    self.time = time
-    self.url = url
+for name, action in action_dict.items():
+  while len(warm_results[name]) < 10:
+    start = time()
+    r = requests.get(action.url, verify=False)
+    latency = time() - start
+    ret_json = r.json()
+    if "cold" in ret_json:
+        if not ret_json["cold"]:
+          warm_results[name].append(latency)
+        else:
+          warm_results[name].append(latency)
 
-for i, (name, action) in enumerate(action_dict.items()):
-  invok_time = i
-  invocations = []
+for k in warm_results.keys():
+  print("warm results, {}=".format(k), sum(warm_results[k]) / len(warm_results[k]))
+  if len(cold_results[k]) > 0:
+    print("cold results, {}=".format(k), sum(cold_results[k]) / len(cold_results[k]))
 
-  # max is just outside OW keepalive
-  sep = min(action.coldtime * action.freq_class,  eleven_mins_sec)
-  while invok_time < trace_time_sec:
-    invocations.append(Invocation(name, invok_time, action.url))
-    invok_time += sep
-  print("to invoke:", name, len(invocations))
-  trace += invocations
-
-trace = sorted(trace, key=lambda x: x.time)
-futures = []
-
-print("trace len", len(trace))
-
-
-start = time()
-for invocation in trace:
-  t = time()
-  while t - start < invocation.time:
-    t = time()
-
-  future = invoke_web_action_async(invocation.url, pool, auth=auth, host=host)
-  futures.append((invocation, future))
-
-print("\n\n done invoking \n\n")
-
-ready = all([future.done() for _, future in futures])
-while not ready:
-  ready = all([future.done() for _, future in futures])
-  sleep(1)
-
-print("\n\n ALL READY \n\n")
-
-cold_results = defaultdict(int)
-warm_results = defaultdict(int)
-
-data = []
-for invocation, future in futures:
-  was_cold, latency, ret_json = future.result()
-  data.append( (invocation.name, was_cold, latency) )
-  print(invocation.name, was_cold, latency)
-  if was_cold is None:
-    pass
-  if was_cold:
-    cold_results[invocation.name] += 1
-  else:
-    warm_results[invocation.name] += 1
-
-print("warm results, total=", sum(warm_results.values()), warm_results)
-print("cold results, total=", sum(cold_results.values()), cold_results)
-
-# df = pd.DataFrame.from_records(data, columns=["invokname", "was_cold", "latency"])
+# df = pd.DataFrame.from_records(data, columns=[func, "was_cold", "latency"])
 # df.to_csv("run.csv")
 
 

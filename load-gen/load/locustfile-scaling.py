@@ -110,7 +110,7 @@ class TransactionalLoad(HttpUser):
 class BurstyShape(LoadTestShape):
   spawn_rate = 20
   bursty = False
-  length = 60*5
+  length = 60*20
   targest_users = int(users)
   curr_users = 1
   last_t = 0
@@ -119,7 +119,7 @@ class BurstyShape(LoadTestShape):
     run_time = round(self.get_run_time())
     # print("tick", run_time)
 
-    if run_time % 5 == 0 and run_time != self.last_t:
+    if run_time % 10 == 0 and run_time != self.last_t:
         self.last_t = run_time
         self.curr_users += 1
         if self.curr_users >= self.targest_users:

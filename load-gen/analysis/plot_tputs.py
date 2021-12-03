@@ -14,19 +14,28 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
 parser.add_argument("--users", type=int, default=100, required=False)
+parser.add_argument("--ceil", required=False, action='store_true')
 args = parser.parse_args()
 
 def path_to_lb(pth):
+  # print(pth)
   parts = pth.split("/")
-  return parts[-1].split("-")[1]
+  # print(parts)
+
+  if args.ceil:
+    p = [p for p in parts if "compare-" in p][-1]
+    return p.split("-")[-1]
+  else:
+    return parts[-1].split("-")[1]
 
 def plot(paths, users):
-  mean_sums = defaultdict(int)
   warm_dict = defaultdict(list)
   cold_dict = defaultdict(list)
   for pth in paths:
     file = os.path.join(pth, "parsed_successes.csv")
-    if not os.path.exists(file) or not str(users) in pth:
+    if not os.path.exists(file):
+      continue
+    if not str(users) + "-" in pth:
       continue
     df = pd.read_csv(file)
 
@@ -42,9 +51,12 @@ def plot(paths, users):
   plt.tight_layout()
   fig.set_size_inches(5, 3)
 
-  map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 'ShardingContainerPoolBalancer':'Sharding'}
-  labels = [map_labs[x] for x in sorted(warm_dict.keys())]
-  print(labels)
+  if args.ceil:
+    labels = [x for x in sorted(warm_dict.keys())]
+  else:
+    map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 'ShardingContainerPoolBalancer':'Sharding'}
+    labels = [map_labs[x] for x in sorted(warm_dict.keys())]
+  # print(labels)
   colds = []
   colds_std = []
   warms = []
@@ -58,7 +70,10 @@ def plot(paths, users):
   ax.bar(labels, colds, label="Cold", yerr=colds_std)
   ax.bar(labels, warms, bottom=colds, label="Warm", yerr=warms_std)
   
-  save_fname = os.path.join("{}-invokes.png".format(args.users))
+  if args.ceil:
+    save_fname = os.path.join("{}-invokes-ceil.png".format(args.users))
+  else:
+    save_fname = os.path.join("{}-invokes.png".format(args.users))
 
   ax.set_ylabel("Invocations")
   ax.set_ylabel("LoadBalancing Policy")

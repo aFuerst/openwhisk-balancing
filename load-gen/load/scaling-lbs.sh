@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=5091395e-db3f-4a70-b715-03fb92155764:XzWD2KPuk3tSXZUpgeejCV3vUZ5ztdiEkMTbcy1YEVQMkDfSo3A4RdmArGiZx9s1
+export AUTH=036c13e2-c941-45b2-88eb-6c6f71bb9403:qtEgqx6xwz0n4IH4hb8ydoA2H48O9rxYmUgyj6vBNAdjBNnDnfr1Bjfg0ciCrPGi
 
 for ITERATION in {0..0}
 do

@@ -9,6 +9,7 @@ import copy
 
 host = os.environ["HOST"]
 auth = os.environ["AUTH"]
+users = int(os.environ["USER_TOT"])
 
 class Action:
   def __init__(self, name, url, warmtime, coldtime, freq_class):
@@ -30,7 +31,6 @@ for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, 
   for freq in [1, 5, 16, 40]:
     name = action_name + "_" + str(freq)
     url = add_web_action(name, path, container, memory=memory, host=host)
-    url  = ""
     normal_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
@@ -40,7 +40,6 @@ for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, 
       freq = 160
     name = action_name + "_" + str(freq)
     url = add_web_action(name, path, container, memory=memory, host=host)
-    url  = ""
     bursty_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
 
 # bursty_action_dict = copy.deepcopy(normal_action_dict)
@@ -64,10 +63,6 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
     global freqs
     action = random.choices(population=acts, weights=freqs, k=1)[0]
     t = time()
-    sleep(1)
-    print(action.name)
-    # self.client.get("www.google.com", verify=False)
-    return
     invoke_name = action.name + "-" + str(t)
     self.tm.start_transaction(invoke_name)
     r = self.client.get(action.url, verify=False)
@@ -125,7 +120,7 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
 class BurstyShape(LoadTestShape):
   spawn_rate = 20
   bursty = False
-  length = 60
+  length = 60*30
 
   def tick(self):
     run_time = round(self.get_run_time())
@@ -144,7 +139,7 @@ class BurstyShape(LoadTestShape):
       print(run_time)
     if run_time > self.length:
       return None
-    return (100, self.spawn_rate)
+    return (users, self.spawn_rate)
 
 class TransactionalLoad(HttpUser):
   wait_time = between(0, 1)

@@ -18,7 +18,7 @@ args = parser.parse_args()
 # users = args.users
 
 out=[]
-warm_times = [0.055, 1.939, 1.184, 0.044, 0.352, 0.034, 6.365, 0.049, 8.357, 0.633, 7.0, 0.279]
+warm_times = [0.3525, 3.035, 1.344, 0.2484, 0.8558, 0.3944, 6.7276, 0.2661, 9.1485, 0.7716, 6.1336, 0.4874]
 actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
 path = os.path.join(args.path[0], "parsed_successes.csv")
 tmp = pd.read_csv(path)
@@ -47,7 +47,9 @@ def plot(paths, users, warm):
   df_dict = defaultdict(list)
   for pth in paths:
     file = os.path.join(pth, "parsed_successes.csv")
-    if not os.path.exists(file) or str(users) in pth:
+    if not os.path.exists(file):
+      continue
+    if not str(users) + "-RandomForwardLoadBalancer" in pth:
       continue
     df = pd.read_csv(file)
     if warm:
@@ -102,6 +104,7 @@ def plot(paths, users, warm):
   #   new_labs.append(wanted[len("compare-"):])
 
   poss = [2*i for i in range(len(pts))]
+  print(len(pts), len(labels), len(poss))
   ax.boxplot(pts, labels=labels, positions=poss, showfliers=False)
   # ax.set_yscale('log')
   handles = []
