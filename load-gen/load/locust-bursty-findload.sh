@@ -1,12 +1,12 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=036c13e2-c941-45b2-88eb-6c6f71bb9403:qtEgqx6xwz0n4IH4hb8ydoA2H48O9rxYmUgyj6vBNAdjBNnDnfr1Bjfg0ciCrPGi
+export AUTH=a0ebde37-0272-4d2e-b2ed-77f93f9e0158:WW5BI37G7ppqVPnOAgapbsUxGirIsBo1iXATp7ufGdK5wO44CbPbQvtUbCdHxU50
 
 for ITERATION in {0..2}
 do
 
-for USERS in 50
+for USERS in 30 70 # 50
 do
 
 export USER_TOT=$USERS
@@ -71,10 +71,10 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
 
   done
 
-python3 ../analysis/plot_invoker_load.py $pth $USERS
-python3 ../analysis/plot_invocations.py $pth $USERS
-python3 ../analysis/map_invocation_to_load.py $pth $USERS
-python3 ../analysis/plot_latencies.py $pth $USERS
+# python3 ../analysis/plot_invoker_load.py $pth $USERS
+# python3 ../analysis/plot_invocations.py $pth $USERS
+# python3 ../analysis/map_invocation_to_load.py $pth $USERS
+# python3 ../analysis/plot_latencies.py $pth $USERS
 done
 
 done

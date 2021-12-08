@@ -29,10 +29,11 @@ base_file = "parsed_successes.csv"
 
 out=[]
 warm_times = [0.3525, 3.035, 1.344, 0.2484, 0.8558, 0.3944, 6.7276, 0.2661, 9.1485, 0.7716, 6.1336, 0.4874]
+min_warm_times = [0.05505, 1.6623, 0.24349, 0.044388, 0.33531, 0.03527, 6.44305, 0.03420, 8.06751, 0.60664, 6.06870, 0.10007]
 actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
 tmp = pd.read_csv(os.path.join(path, base_file))
 func_names = tmp["function"].unique()
-for warm_time, k in zip(warm_times, actions):
+for warm_time, k in zip(min_warm_times, actions):
   for name in func_names:
     if k in name:
       out.append((name,warm_time))

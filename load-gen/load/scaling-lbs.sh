@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=036c13e2-c941-45b2-88eb-6c6f71bb9403:qtEgqx6xwz0n4IH4hb8ydoA2H48O9rxYmUgyj6vBNAdjBNnDnfr1Bjfg0ciCrPGi
+export AUTH=a0ebde37-0272-4d2e-b2ed-77f93f9e0158:WW5BI37G7ppqVPnOAgapbsUxGirIsBo1iXATp7ufGdK5wO44CbPbQvtUbCdHxU50
 
 for ITERATION in {0..0}
 do
@@ -28,7 +28,7 @@ redisPass='OpenWhisk'
 redisPort=6379
 ansible=/home/ow/openwhisk-caching/ansible
 
-BASEPATH="/extra/alfuerst/20min-scaling/$ITERATION/"
+BASEPATH="/extra/alfuerst/20min-scaling-20sec/$ITERATION/"
 
 r=1
 warmup=$(($USERS/$r))
@@ -41,7 +41,7 @@ pw='OwUser'
 cmd="cd $ansible; echo $ENVIRONMENT; export OPENWHISK_TMP_DIR=$whisk_logs_dir; 
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean;
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e redis_port=$redisPort -e redis_pass=$redisPass;
-ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=4 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=1.5 -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER -e controller_horizscale=true"
+ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=4 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=1.5 -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER -e controller_horizscale=true -e invoker_idle_container=60minutes"
 ANSIBLE_HOST="$user@172.29.200.161"
 sshpass -p $pw ssh $ANSIBLE_HOST "$cmd" &> "$pth/logs.txt"
 
@@ -60,7 +60,7 @@ elif [ $VMID -lt 6 ]; then
 SERVER=1
 fi
 
-if [ $SERVER -ne 0 ];
+if [ $SERVER -ne 2 ];
 then
 VM_HOST="v-02$SERVER"
 
@@ -113,13 +113,9 @@ do
 
 done
 
-python3 ../analysis/plot_invoker_load.py $pth $USERS
-python3 ../analysis/plot_invocations.py $pth $USERS
-python3 ../analysis/map_invocation_to_load.py $pth $USERS
-python3 ../analysis/plot_latencies.py $pth $USERS
+python3 ../analysis/plot_scaling_invoker.py $pth $USERS
 done
 
-python3 ../analysis/compare_function.py "$BASEPATH" $USERS
 done
 
 done

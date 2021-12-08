@@ -119,7 +119,7 @@ class BurstyShape(LoadTestShape):
     run_time = round(self.get_run_time())
     # print("tick", run_time)
 
-    if run_time % 10 == 0 and run_time != self.last_t:
+    if run_time % 20 == 0 and run_time != self.last_t:
         self.last_t = run_time
         self.curr_users += 1
         if self.curr_users >= self.targest_users:

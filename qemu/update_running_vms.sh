@@ -19,6 +19,8 @@ docker rmi alfuerst/controller:latest;
 docker rmi alfuerst/invoker:latest;
 docker pull v-019.victor.futuresystems.org:5000/alfuerst/controller:latest;
 docker pull v-019.victor.futuresystems.org:5000/alfuerst/invoker:latest;
+docker pull alfuerst/controller:latest;
+docker pull alfuerst/invoker:latest;
 cd /home/ow/openwhisk-caching;
 git pull"
 

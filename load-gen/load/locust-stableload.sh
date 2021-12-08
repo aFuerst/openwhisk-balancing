@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=036c13e2-c941-45b2-88eb-6c6f71bb9403:qtEgqx6xwz0n4IH4hb8ydoA2H48O9rxYmUgyj6vBNAdjBNnDnfr1Bjfg0ciCrPGi
+export AUTH=a0ebde37-0272-4d2e-b2ed-77f93f9e0158:WW5BI37G7ppqVPnOAgapbsUxGirIsBo1iXATp7ufGdK5wO44CbPbQvtUbCdHxU50
 
 USERS=100
 for USERS in {50..500..50}

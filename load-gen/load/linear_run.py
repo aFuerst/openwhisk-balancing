@@ -5,7 +5,7 @@ from collections import defaultdict
 # import pandas as pd
 
 host="https://172.29.200.161:10001"
-auth="036c13e2-c941-45b2-88eb-6c6f71bb9403:qtEgqx6xwz0n4IH4hb8ydoA2H48O9rxYmUgyj6vBNAdjBNnDnfr1Bjfg0ciCrPGi"
+auth="a0ebde37-0272-4d2e-b2ed-77f93f9e0158:WW5BI37G7ppqVPnOAgapbsUxGirIsBo1iXATp7ufGdK5wO44CbPbQvtUbCdHxU50"
 
 set_properties(host=host, auth=auth)
 class Action:
@@ -38,9 +38,9 @@ for name, action in action_dict.items():
           warm_results[name].append(latency)
 
 for k in warm_results.keys():
-  print("warm results, {}=".format(k), sum(warm_results[k]) / len(warm_results[k]))
-  if len(cold_results[k]) > 0:
-    print("cold results, {}=".format(k), sum(cold_results[k]) / len(cold_results[k]))
+  print("{} warm results, avg = {}; min = {}".format(k, sum(warm_results[k]) / len(warm_results[k]), min(warm_results[k])))
+  # if len(cold_results[k]) > 0:
+  #   print("cold results, avg = {}; min = {}".format(k), sum(cold_results[k]) / len(cold_results[k]), min(cold_results[k]))
 
 # df = pd.DataFrame.from_records(data, columns=[func, "was_cold", "latency"])
 # df.to_csv("run.csv")
