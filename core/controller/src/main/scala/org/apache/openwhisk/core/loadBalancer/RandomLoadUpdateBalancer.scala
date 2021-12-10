@@ -90,7 +90,7 @@ class RandomLoadUpdateBalancer(
   }
 
   override protected def customUpdate() : Unit = {
-    RandomLoadUpdateBalancer.updatePopularity(schedulingState)
+    RandomLoadUpdateBalancer.updatePopularity(schedulingState, lbConfig)
   }
 }
 
@@ -98,12 +98,14 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
 
   // private var popularity: mutable.Map[String, Long] = mutable.Map[String, Long]().withDefaultValue(0)
   private var popular: mutable.Map[String, Boolean] = mutable.Map[String, Boolean]().withDefaultValue(false)
+  private var loads: mutable.Map[InvokerInstanceId, Double] = mutable.Map[InvokerInstanceId, Double]().withDefaultValue(0.0)
   private val last_access_times : TrieMap[String, Long] = TrieMap.empty[String, Long]
   private val inter_arival_times : TrieMap[String, Double] = TrieMap.empty[String, Double]
   private val percentile_popular : Double = 20.0
   private var popular_threshold : Double = 0.0
   private var avg_arrival_rate : Double = 0.0
   private var ema_alph : Double = 0.9
+  private var distrib : NormalDistribution = new NormalDistribution(0.5, 0.1)
 
   override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
     implicit actorSystem: ActorSystem,
@@ -135,7 +137,7 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
       invokerPoolFactory)
   }
 
-  def updatePopularity(schedulingState: RedisAwareLoadBalancerState)(implicit logging: Logging) : Unit = {
+  def updatePopularity(schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging) : Unit = {
     logging.info(this, s"calculating popularity")(TransactionId.invokerRedis)
     val p = new Percentile()
     val list = inter_arival_times.values.toArray.sorted
@@ -151,6 +153,28 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
       agg + s"${curr} has IAT of ${iat} and is popular? ${pop}; "
     }
     logging.info(this, state)(TransactionId.invokerRedis)
+
+    val s = 1
+    val server_arrival_rate = avg_arrival_rate  / schedulingState._consistentHashList.length
+    val extra_anticip_load = server_arrival_rate / lbConfig.invoker.cores * s 
+    // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
+    distrib = new NormalDistribution(extra_anticip_load, 0.1)
+
+    for (node <- schedulingState._consistentHashList)
+    {
+      val load = schedulingState.getLoad(node, lbConfig.loadStrategy)
+      loads += (node.invoker -> load)
+      // packetStr match {
+      //   case Some(realStr) => {
+      //     val packet = realStr.parseJson.convertTo[RedisPacket]
+
+      //     schedulingState.updateCPUUsage(invoker.id, packet.cpuLoad, packet.running, packet.runningAndQ, packet.loadAvg)
+      //     schedulingState.updateMemUsage(invoker.id, packet.containerActiveMem, packet.usedMem)
+      //     schedulingState.updateRuntimeData(packet.priorities)
+      //   }
+      //   case None =>  logging.warn(this, s"Could not get redis packet for invoker $id")
+      // }
+    }
   }
 
   def now() : Long = {
@@ -189,19 +213,27 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
       return load
     }
 
-    val s = 1
-    val server_arrival_rate = avg_arrival_rate  / schedulingState._consistentHashList.length
-    val extra_anticip_load = server_arrival_rate / lbConfig.invoker.cores * s 
-    // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
-    val distrib = new NormalDistribution(extra_anticip_load, 0.1)
+    // val s = 1
+    // val server_arrival_rate = avg_arrival_rate  / schedulingState._consistentHashList.length
+    // val extra_anticip_load = server_arrival_rate / lbConfig.invoker.cores * s 
+    // // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
+    // val distrib = new NormalDistribution(extra_anticip_load, 0.1)
     return load + distrib.sample()
   }
 
   def runLocalCondition(node: ConsistentCacheInvokerNode, actionName: String, schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transid: TransactionId) : Boolean = {
     // assume function is popular
-    val load = schedulingState.getLoad(node, lbConfig.loadStrategy)
-    val Lnoisy = load +  noisyLoad(load, schedulingState, lbConfig)
-    Lnoisy <= lbConfig.invoker.boundedCeil
+    val load_opt = loads get node.invoker
+    load_opt match {
+      case Some(load) => {
+        val Lnoisy = noisyLoad(load, schedulingState, lbConfig)
+        Lnoisy <= lbConfig.invoker.boundedCeil
+      }
+      case None => {
+        // no load means error?
+        false
+      }
+    }
   }
 
   def requiredProperties: Map[String, String] = kafkaHosts
