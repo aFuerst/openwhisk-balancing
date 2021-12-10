@@ -1,15 +1,14 @@
-from locust import HttpUser, task, constant, events, between, TaskSet, SequentialTaskSet, LoadTestShape
+from locust import HttpUser, task, constant, events, between, TaskSet, SequentialTaskSet
 from locust_plugins.transaction_manager import TransactionManager
 import little
 from wsk_interact import *
 import random
 import os
 from time import time
-import copy
 
-host = os.environ["HOST"]
+host1 = os.environ["HOST1"]
+host2 = os.environ["HOST2"]
 auth = os.environ["AUTH"]
-users = int(os.environ["USER_TOT"])
 
 class Action:
   def __init__(self, name, url, warmtime, coldtime, freq_class):
@@ -19,32 +18,17 @@ class Action:
     self.warmtime = warmtime
     self.freq_class = freq_class
 
-  def __str__(self) -> str:
-      return "{}, {}".format(self.name, self.freq_class)
-
-set_properties(host=host, auth=auth)
-normal_action_dict = {}
-bursty_action_dict = {}
+set_properties(host=host1, auth=auth)
+action_dict = {}
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
   path = os.path.join("../ow-actions", zip_file)
   for freq in [1, 5, 16, 40]:
     name = action_name + "_" + str(freq)
-    url = add_web_action(name, path, container, memory=memory, host=host)
-    normal_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
+    url = add_web_action(name, path, container, memory=memory, host=host1)
+    action_dict[name] = Action(name, url, warm_time, cold_time, freq)
 
-for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
-  path = os.path.join("../ow-actions", zip_file)
-  for freq in [1, 5, 16, 40]:
-    if (action_name == "aes" or action_name == "gzip") and freq == 40:
-      freq = 160
-    name = action_name + "_" + str(freq)
-    url = add_web_action(name, path, container, memory=memory, host=host)
-    bursty_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
-
-acts, normal_freqs = little._toWeightedData(normal_action_dict)
-_, bursty_freqs = little._toWeightedData(bursty_action_dict)
-max_wait = 10*60
+acts, freqs = little._toWeightedData(action_dict)
 
 class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
      
@@ -56,16 +40,12 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
 
   @task
   def invoke(self):
-    if self.user.environment.shape_class.bursty:
-      print("bursty")
-      action = random.choices(population=acts, weights=bursty_freqs, k=1)[0]
-    else:
-      print("not bursty")
-      action = random.choices(population=acts, weights=normal_freqs, k=1)[0]
+    action = random.choices(population=acts, weights=freqs, k=1)[0]
     t = time()
     invoke_name = action.name + "-" + str(t)
     self.tm.start_transaction(invoke_name)
-    r = self.client.get(action.url, verify=False)
+    api_path = action.url.split(":")[-1].strip('1234567890')
+    r = self.client.get(api_path, verify=False)
     # lat = time() - t
     # self.tm.end_transaction(success=True, transaction_name=invoke_name, failure_message=str(lat))
     # return
@@ -82,7 +62,8 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
       if r.status_code == 202:
         # invocation timed out, poll for result
         # https://172.29.200.161/api/v1/namespaces/_/activations/7f6564cf8c5f494da564cf8c5fd94d3f
-        resp_json = r.json()
+        # resp_json = r.json()
+        host = '/'.join(r.split('/')[:3])
         poll_url = "{}/api/v1/namespaces/_/activations/{}".format(host, activation_id)
         i = 0
         r = requests.get(poll_url, verify=False, auth=(self.u,self.p))
@@ -117,27 +98,12 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
     failure_msg = str(failure_msg) + " : "  + str(lat) + " : " + str(activation_id)
     self.tm.end_transaction(success=success, transaction_name=invoke_name, failure_message=failure_msg)
  
-class BurstyShape(LoadTestShape):
-  spawn_rate = 5
-  bursty = False
-  length = 60*30
-  last_t = 0
-
-  def tick(self):
-    run_time = round(self.get_run_time())
-
-    if run_time % 10 == 0 and run_time != self.last_t:
-      if self.bursty:
-        print("{} going normal------------------------------------------------------------------------------------------------------------------".format(run_time))
-        self.bursty = False
-      else:
-        print("{} going bursty------------------------------------------------------------------------------------------------------------------".format(run_time))
-        self.bursty = True
-    if run_time > self.length:
-      return None
-    return (users, self.spawn_rate)
-
-class TransactionalLoad(HttpUser):
+class Host1TransactionalLoad(HttpUser):
   wait_time = between(0, 1)
-  host = host
+  host = host1
+  tasks = [TransactionalWaitForFunctionCoplete]
+
+class Host2TransactionalLoad(HttpUser):
+  wait_time = between(0, 1)
+  host = host2
   tasks = [TransactionalWaitForFunctionCoplete]

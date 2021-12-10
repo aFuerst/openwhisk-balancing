@@ -38,6 +38,7 @@ import org.apache.openwhisk.common.LoggingMarkers._
 import org.apache.openwhisk.core.{ConfigKeys, WhiskConfig}
 import org.apache.openwhisk.spi.SpiLoader
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Future
 
 /**
@@ -230,6 +231,7 @@ object RoundRobinLB extends LoadBalancerProvider {
  */
 case class RoundRobinLBState(
   private var robinInt: Int = 0,
+  private var rr : AtomicInteger = new AtomicInteger(0),
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -238,15 +240,29 @@ case class RoundRobinLBState(
   /** Getters for the variables, setting from the outside is only allowed through the update methods below */
   def invokers: IndexedSeq[InvokerHealth] = _invokers
 
+  def incrementAndGet() : Int = {
+    // var ret = rr.incrementAndGet()
+    // if (ret >= _invokers.length)
+    // {
+    //   ret = 0
+    //   rr.set(ret)
+    // }
+    // return ret
+
+    robinInt = (robinInt + 1) % _invokers.length
+    return robinInt
+  }
+
   def roundRobin() : Option[InvokerInstanceId] = {
     var ret = _invokers(robinInt)
-    robinInt += 1
-    robinInt %= _invokers.length;
+    var idx = incrementAndGet()
+    // robinInt += 1
+    // robinInt %= _invokers.length;
 
     while (! ret.status.isUsable) {
-      var ret = _invokers(robinInt)
-      robinInt += 1
-      robinInt %= _invokers.length;
+      var ret = _invokers(idx)
+      idx = incrementAndGet()
+      // robinInt %= _invokers.length;
     }
     return Some(ret.id)
   }

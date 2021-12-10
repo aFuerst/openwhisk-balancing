@@ -1,16 +1,16 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=a0ebde37-0272-4d2e-b2ed-77f93f9e0158:WW5BI37G7ppqVPnOAgapbsUxGirIsBo1iXATp7ufGdK5wO44CbPbQvtUbCdHxU50
+export AUTH=16e211d7-9559-4c7e-9f33-cf32d5f1b8e0:jFZq1YnhzHIiMHwHK7kuZ7ZBaISXY75dV6WhNDZPV6iivSwzhocyVFYuqMzOmjLx
 
 for ITERATION in {0..3}
 do
 
-for USERS in 30 # 50 70
+for USERS in 50 30 70
 do
 
-# BoundedLoadsLoadBalancer RoundRobinLB ShardingContainerPoolBalancer
-for BALANCER in RoundRobinLB BoundedLoadsLoadBalancer RandomForwardLoadBalancer ShardingContainerPoolBalancer
+# RandomForwardLoadBalancer ShardingContainerPoolBalancer RoundRobinLB BoundedLoadsLoadBalancer 
+for BALANCER in RandomLoadUpdateBalancer
 do
 
 MEMORY="10G"
@@ -19,19 +19,25 @@ LOADSTRAT="LoadAvg"
 ALGO="RandomForward"
 OUTPTH="/out/path/name.csv"
 EVICTION="GD"
-ENVIRONMENT="max-distrib"
+ENVIRONMENT="host-distrib"
 
 whisk_logs_dir=/home/ow/openwhisk-logs
 redisPass='OpenWhisk'
 redisPort=6379
 ansible=/home/ow/openwhisk-caching/ansible
 
-BASEPATH="/extra/alfuerst/openwhisk-logs/30min-compare/$ITERATION/"
+BASEPATH="/extra/alfuerst/openwhisk-logs/30min-compare/$ITERATION"
 
 r=5
 warmup=$(($USERS/$r))
 echo "$BALANCER, users: $USERS; warmup seconds: $warmup"
 pth="$BASEPATH/$USERS-$BALANCER"
+
+if [ -f "$pth/controller0_logs.log" ]; then
+echo "skipping run $pth"
+continue
+fi
+
 mkdir -p $pth
 user='ow'
 pw='OwUser'
@@ -57,7 +63,7 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
 
   INVOKERID=$(($VMID-1))
   # IP=$(($VMID+1))
-  IP="172.29.200.$((161 + $base))"
+  IP="172.29.200.$((161 + $VMID))"
 
   name="invoker$INVOKERID"
   log_pth="/home/ow/openwhisk-logs/wsklogs/"
@@ -68,13 +74,13 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
 
   done
 
-python3 ../analysis/plot_invoker_load.py $pth $USERS
-python3 ../analysis/plot_invocations.py $pth $USERS
-python3 ../analysis/map_invocation_to_load.py $pth $USERS
-python3 ../analysis/plot_latencies.py $pth $USERS
+# python3 ../analysis/plot_invoker_load.py $pth $USERS
+# python3 ../analysis/plot_invocations.py $pth $USERS
+# python3 ../analysis/map_invocation_to_load.py $pth $USERS
+# python3 ../analysis/plot_latencies.py $pth $USERS
 done
 
-python3 ../analysis/compare_function.py "./$BASEPATH/" $USERS
+# python3 ../analysis/compare_function.py "./$BASEPATH/" $USERS
 done
 
 done

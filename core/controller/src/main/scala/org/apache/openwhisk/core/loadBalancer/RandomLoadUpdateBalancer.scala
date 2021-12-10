@@ -31,19 +31,20 @@ import org.apache.openwhisk.spi.SpiLoader
 
 import scala.concurrent.Future
 import scala.math.{min}
-import org.apache.commons.math3.distribution.{NormalDistribution, UniformRealDistribution}
+import org.apache.commons.math3.distribution.{NormalDistribution}
+import org.apache.commons.math3.stat.descriptive.rank.Percentile
 import scala.collection.mutable
-// import scala.concurrent.duration._
-import java.util.concurrent.atomic.LongAdder
-import org.apache.openwhisk.core.{ConfigKeys, WhiskConfig}
-import pureconfig._
-import pureconfig.generic.auto._
+import org.apache.openwhisk.core.{WhiskConfig}
+// import pureconfig._
+// import pureconfig.generic.auto._
 import scala.util.Random
+import java.time.Instant
+import scala.collection.concurrent.TrieMap
 
 /**
  * A loadbalancer that schedules workload based on random-forwarding consistent hashing load balancer
  */
-class RandomForwardLoadBalancer(
+class RandomLoadUpdateBalancer(
   config: WhiskConfig,
   controllerInstance: ControllerInstanceId,
   feedFactory: FeedFactory,
@@ -53,17 +54,15 @@ class RandomForwardLoadBalancer(
   logging: Logging)
     extends RedisAwareLoadBalancer(config, controllerInstance, feedFactory, invokerPoolFactory) {
 
-  private val probabliltyState = RandomGenerationState()(lbConfig)
 
   /** 1. Publish a message to the loadbalancer */
   override def publish(action: ExecutableWhiskActionMetaData, msg: ActivationMessage)(
     implicit transid: TransactionId) : Future[Future[Either[ActivationId, WhiskActivation]]] = {
 
-      val chosen = RandomForwardLoadBalancer.schedule(action.fullyQualifiedName(true),
+      val chosen = RandomLoadUpdateBalancer.schedule(action.fullyQualifiedName(true),
                                                         schedulingState, 
                                                         msg.activationId, 
-                                                        lbConfig.loadStrategy,
-                                                        probabliltyState)
+                                                        lbConfig)
 
     chosen.map { invoker => 
       // MemoryLimit() and TimeLimit() return singletons - they should be fast enough to be used here
@@ -91,58 +90,20 @@ class RandomForwardLoadBalancer(
   }
 
   override protected def customUpdate() : Unit = {
-    probabliltyState.updateInvokerLoad(schedulingState, lbConfig.loadStrategy)
-    RandomForwardLoadBalancer.updatePopularity(schedulingState)
+    RandomLoadUpdateBalancer.updatePopularity(schedulingState)
   }
 }
 
-case class RandomGenerationState()
-(
-  lbConfig: ShardingContainerPoolBalancerConfig =
-    loadConfigOrThrow[ShardingContainerPoolBalancerConfig](ConfigKeys.loadbalancer))(implicit logging: Logging) {
+object RandomLoadUpdateBalancer extends LoadBalancerProvider {
 
-  private val load_range : IndexedSeq[BigDecimal] = Range.BigDecimal(0.0, 10.0*lbConfig.invoker.boundedCeil, 0.01)
-  private val distrib : NormalDistribution = new NormalDistribution(0.5*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
-
-  private val transformed_load_range : IndexedSeq[Double] = load_range.map(x => distrib.cumulativeProbability(x.doubleValue))
-  private val invoker_transformed_loads : mutable.Map[InvokerInstanceId, Double] = mutable.Map[InvokerInstanceId, Double]().withDefaultValue(0.0)
-  private val uniform_distrib : UniformRealDistribution = new UniformRealDistribution(0.0, 1.0)
-
-  logging.info(this, s"Load range from 0.0 to ${10.0*lbConfig.invoker.boundedCeil}")(TransactionId.invokerRandom)
-  logging.info(this, s"NormalDistribution mean = ${0.5*lbConfig.invoker.boundedCeil} sd ${0.1*lbConfig.invoker.boundedCeil}")(TransactionId.invokerRandom)
-  logging.info(this, s"UniformRealDistribution lower = ${0.0} sd ${1}")(TransactionId.invokerRandom)
-
-  def searchSortedLoad(load: Double) : Double = {
-    for (i <- 0 to load_range.size) {
-      if (load_range(i) > load) {
-        return transformed_load_range(i-1)
-      }
-    }
-    return transformed_load_range(transformed_load_range.size -1)
-  }
-
-  def updateInvokerLoad(schedulingState: RedisAwareLoadBalancerState, loadStrategy: String)(implicit logging: Logging) : Unit = {
-    logging.info(this, s"updating invoker load")(TransactionId.invokerRedis)
-    schedulingState.invokers.map { invoker =>
-      val serverLoad = schedulingState.getLoad(invoker.id, loadStrategy)
-      invoker_transformed_loads += (invoker.id -> searchSortedLoad(serverLoad))
-    }
-  }
-
-  def forwardProbability(invoker: InvokerInstanceId)(implicit logging: Logging, transid: TransactionId) : Boolean = {
-    val prob = invoker_transformed_loads(invoker)
-    val sample = uniform_distrib.sample()
-    return sample < prob
-  }
-
-}
-
-object RandomForwardLoadBalancer extends LoadBalancerProvider {
-
-  private var popularity: mutable.Map[String, Long] = mutable.Map[String, Long]().withDefaultValue(0)
+  // private var popularity: mutable.Map[String, Long] = mutable.Map[String, Long]().withDefaultValue(0)
   private var popular: mutable.Map[String, Boolean] = mutable.Map[String, Boolean]().withDefaultValue(false)
-  private var ratios: mutable.Map[String, Double] = mutable.Map[String, Double]().withDefaultValue(1.0)
-  val totalActivations = new LongAdder()
+  private val last_access_times : TrieMap[String, Long] = TrieMap.empty[String, Long]
+  private val inter_arival_times : TrieMap[String, Double] = TrieMap.empty[String, Double]
+  private val percentile_popular : Double = 20.0
+  private var popular_threshold : Double = 0.0
+  private var avg_arrival_rate : Double = 0.0
+  private var ema_alph : Double = 0.9
 
   override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
     implicit actorSystem: ActorSystem,
@@ -167,7 +128,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
       }
 
     }
-    new RandomForwardLoadBalancer(
+    new RandomLoadUpdateBalancer(
       whiskConfig,
       instance,
       createFeedFactory(whiskConfig, instance),
@@ -176,35 +137,77 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
 
   def updatePopularity(schedulingState: RedisAwareLoadBalancerState)(implicit logging: Logging) : Unit = {
     logging.info(this, s"calculating popularity")(TransactionId.invokerRedis)
+    val p = new Percentile()
+    val list = inter_arival_times.values.toArray.sorted
+    popular_threshold =  p.evaluate(list, percentile_popular) // percentile(list, percentile_popular)
+    val avg_iat = p.evaluate(list, 50.0)
+    avg_arrival_rate = 1.0 / (avg_iat/1000.0)
+    logging.info(this, s"calculated popularity; avg_iat = ${avg_iat}; avg_arrival_rate = ${avg_arrival_rate}; popular_threshold=${popular_threshold}; iats = ${inter_arival_times}")(TransactionId.invokerRedis)
 
-    val actsLong = totalActivations.longValue.toDouble
-    if (actsLong > 0) {
-      var cutoff : Double = 1.0
-      if (schedulingState.runTimes.size > 0) {
-        cutoff = 1.0 / schedulingState.runTimes.size.toDouble
-      }
-      // logging.info(this, s"There are ${popularity.size} funcs in system")(TransactionId.invokerRedis)
-      var sorted = popularity.toList.sortBy(item => item._2.longValue)
-      var state = sorted.iterator.foldLeft("") { (agg, curr) =>
-        val ratio : Double = curr._2.longValue / actsLong
-        ratios += (curr._1 -> ratio)
-        val pop = ratio >= cutoff
-        popular += (curr._1 -> pop)
-        agg + s"${curr._1} has '${curr._2}' invokes out of ${actsLong} total for a ratio of $ratio and is popular? ${ratio >= cutoff}; "
-      }
-      logging.info(this, s"popularity cutoff is $cutoff; Popularity state is: $state")(TransactionId.invokerRedis)
+    var state = inter_arival_times.keys.iterator.foldLeft("") { (agg, curr) =>
+      val iat = inter_arival_times(curr)
+      val pop = iat <= popular_threshold
+      popular += (curr -> pop)
+      agg + s"${curr} has IAT of ${iat} and is popular? ${pop}; "
     }
+    logging.info(this, state)(TransactionId.invokerRedis)
+  }
+
+  def now() : Long = {
+    Instant.now().toEpochMilli()
+  }
+
+  def updateShardsPopular(actionName: String)(implicit logging: Logging, transid: TransactionId) : Unit = {
+    val P = 100.0
+    val T = 100.0 // 20.0
+    val r_orig = T/P // Effective sampling rate 
+    val Ti = actionName.hashCode().abs % P
+    if (Ti < T) {
+      val found = last_access_times get actionName
+      found match {
+        case Some(last_access_time) => {
+          val curr_t = now()
+          val iat = (curr_t - last_access_time) / r_orig
+          var ema_iat = inter_arival_times.getOrElse(actionName, iat)
+          ema_iat = (iat * ema_alph) + ((1-ema_alph) * ema_iat)
+          last_access_times += (actionName -> curr_t)
+          inter_arival_times += (actionName -> ema_iat)
+          // logging.info(this, s"updating SHARDS popularity IAT for function ${actionName}, new IAT is ${ema_iat}")(transid)
+
+        }
+        case None => {
+          val curr_t = now()
+          last_access_times += (actionName -> curr_t)
+          // inter_arival_times += (actionName -> curr_t / r_orig)
+        }
+      }
+    }
+  }
+
+  def noisyLoad(load: Double, schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transid: TransactionId) : Double = {
+    if (popular_threshold == 0) {
+      return load
+    }
+
+    val s = 1
+    val server_arrival_rate = avg_arrival_rate  / schedulingState._consistentHashList.length
+    val extra_anticip_load = server_arrival_rate / lbConfig.invoker.cores * s 
+    // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
+    val distrib = new NormalDistribution(extra_anticip_load, 0.1)
+    return load + distrib.sample()
+  }
+
+  def runLocalCondition(node: ConsistentCacheInvokerNode, actionName: String, schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transid: TransactionId) : Boolean = {
+    // assume function is popular
+    val load = schedulingState.getLoad(node, lbConfig.loadStrategy)
+    val Lnoisy = load +  noisyLoad(load, schedulingState, lbConfig)
+    Lnoisy <= lbConfig.invoker.boundedCeil
   }
 
   def requiredProperties: Map[String, String] = kafkaHosts
 
   def isPopular(schedulingState: RedisAwareLoadBalancerState,name: String)(implicit logging: Logging, transid: TransactionId) : Boolean = {
     return popular(name)
-    // val pop = popularity(name).longValue.toDouble
-    // val ratio : Double = pop / totalActivations.longValue
-    // val cutoff : Double = 1.0 / schedulingState.runTimes.size.toDouble
-    // // logging.info(this, s"checking popularity ${name} $ratio >= $cutoff => ${ratio >= cutoff}")
-    // return ratio >= cutoff
   }
 
   /**
@@ -217,18 +220,17 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     fqn: FullyQualifiedEntityName,
     schedulingState: RedisAwareLoadBalancerState,
     activationId: ActivationId,
-    loadStrategy: String,
-    probabliltyState: RandomGenerationState)
-    (implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {
-    totalActivations.increment()      
+    lbConfig: ShardingContainerPoolBalancerConfig)
+    (implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {   
     // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")(transId)
-
+    
     val strName = s"${fqn.namespace}/${fqn.name}"
-    val func_pop = popularity(strName) + 1//.increment()
-    popularity += (strName -> func_pop)
+    updateShardsPopular(strName)
+    // val func_pop = popularity(strName) + 1//.increment()
+    // popularity += (strName -> func_pop)
     if (! isPopular(schedulingState, strName)) {
       // logging.info(this, s"unpopular function ${strName} :(")(transId)
-      return getInvokerConsistentCache(fqn, schedulingState, activationId, loadStrategy)
+      return getInvokerConsistentCache(fqn, schedulingState, activationId, lbConfig)
     }
     // logging.info(this, s"Popular function ${strName}!")(transId)
 
@@ -246,17 +248,16 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
         for (i <- 0 to max_chain) {
           val id = (idx + i) % schedulingState._consistentHashList.length
           node = schedulingState._consistentHashList(id)
-          val serverLoad = schedulingState.getLoad(node, loadStrategy)
 
-          val should_forward = probabliltyState.forwardProbability(node.invoker)
-          if (! should_forward) {
+          if (runLocalCondition(node, strName, schedulingState, lbConfig)) {
             if (chain_len > 0) {
               logging.info(this, s"Activation ${activationId} was pushed ${chain_len} places to ${node.invoker}, from ${orig_invoker}")(transId)
             }
-            // logging.info(this, s"Not forwarding from invoker ${node.invoker}, load: ${serverLoad}")(transId)
-            schedulingState.updateTrackingData(node, loadStrategy)
+
+            schedulingState.updateTrackingData(node, lbConfig.loadStrategy)
             return Some(node.invoker)
           }
+
           // logging.info(this, s"forwarding from invoker ${node.invoker}, load: ${serverLoad}")(transId)
           chain_len += 1
         }
@@ -266,7 +267,7 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
           logging.info(this, s"Activation ${activationId} was pushed full circle ${chain_len} places; randomly sending to ${node.invoker}, from ${orig_invoker}")(transId)
           schedulingState.wakeUpInvoker()
         }
-        schedulingState.updateTrackingData(node, loadStrategy)
+        schedulingState.updateTrackingData(node, lbConfig.loadStrategy)
         return Some(node.invoker)
       }
       case None => None
@@ -277,54 +278,51 @@ object RandomForwardLoadBalancer extends LoadBalancerProvider {
     fqn: FullyQualifiedEntityName, 
     schedulingState: RedisAwareLoadBalancerState, 
     activationId: ActivationId, 
-    loadStrategy: String)(implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {
-    
+    lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {
+       
     val strName = s"${fqn.namespace}/${fqn.name}"
+    var times = schedulingState.runTimes.getOrElse(strName, (0.0, 0.0))
+    var r_orig: Double = 2.2
+    var slowdown = 1.2*(lbConfig.invoker.boundedCeil+1)
+    if (times._1 != 0.0) {
+      r_orig = times._2 / times._1
+      slowdown = min(r_orig, slowdown)
+    }
+    val thresh = slowdown-1.0
+
     val possNode = schedulingState.locateNode(strName)
     possNode match {
       case Some (foundNode) => {
         var original_node = foundNode
-        val orig_serverLoad = schedulingState.getLoad(original_node, loadStrategy)
+        val orig_serverLoad = schedulingState.getLoad(original_node, lbConfig.loadStrategy)
         var node = original_node
-        val loadCuttoff = schedulingState.getLoadCutoff(loadStrategy)
+        val loadCuttoff = schedulingState.getLoadCutoff(lbConfig.loadStrategy)
 
         val idx = schedulingState._consistentHashList.indexWhere( p => p.invoker == original_node.invoker)
-        val chainLen = schedulingState._consistentHashList.length
-        var times = schedulingState.runTimes.getOrElse(strName, (0.0, 0.0))
-        var r: Double = 2.2
-        if (times._1 != 0.0) {
-          r = times._2 / times._1
-          r = min(r, 2.2)
-        }
+        val max_chain = schedulingState._consistentHashList.length
 
-        for (i <- 0 to chainLen) {
+
+        for (i <- 0 to max_chain) {
           var id = (idx + i) % schedulingState._consistentHashList.length
           node = schedulingState._consistentHashList(id)
-          val serverLoad = schedulingState.getLoad(node, loadStrategy)
+          val serverLoad = schedulingState.getLoad(node, lbConfig.loadStrategy)
 
-          if (serverLoad <= loadCuttoff) {
+          if (serverLoad - thresh <= 0) {
             if (i > 0) {
               logging.info(this, s"unpopular Activation ${activationId} was pushed ${i} places to ${node.invoker}, from ${original_node.invoker}")(transId)
             }
             /* assign load to node */
-            schedulingState.updateTrackingData(node, loadStrategy)
-            return Some(node.invoker)
-          }
-          else if (serverLoad <= r-1) {
-            if (i > 0) {
-              logging.info(this, s"unpopular Activation ${activationId} was pushed ${i} places to ${node.invoker}, from ${original_node.invoker}")(transId)
-            }
-            schedulingState.updateTrackingData(node, loadStrategy)
+            schedulingState.updateTrackingData(node, lbConfig.loadStrategy)
             return Some(node.invoker)
           }
         }
         /* went around enough, give up */
         node = schedulingState._consistentHashList(Random.nextInt(schedulingState._consistentHashList.size))
-        if (chainLen > 0) {
-          logging.info(this, s"Activation ${activationId} was pushed full circle ${chainLen} places; randomly sending to ${node.invoker}, from ${original_node.invoker}")(transId)
+        if (max_chain > 0) {
+          logging.info(this, s"Activation ${activationId} was pushed full circle ${max_chain} places; randomly sending to ${node.invoker}, from ${original_node.invoker}")(transId)
           schedulingState.wakeUpInvoker()
         }
-        schedulingState.updateTrackingData(node, loadStrategy)
+        schedulingState.updateTrackingData(node, lbConfig.loadStrategy)
         return Some(node.invoker)
       }
       case None => None

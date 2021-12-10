@@ -62,6 +62,7 @@ def plot(path, metric):
     df = df.resample("S").mean().interpolate()
     df.index = df.index - (df.index[0] - time_min)
     xs = date_idx_to_min(df.index)
+    df[metric] = df[metric] / 4
     ax.plot(xs, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
     # limit = max(limit, df.index[-1])
     # time_min = min(time_min, df.index[0])
@@ -84,10 +85,13 @@ def plot(path, metric):
   mean_df["present"] = mean_df[invoker_cols].notnull().sum(axis=1)
   mean_df["mean"] = mean_df[invoker_cols].sum(axis=1) / mean_df["present"]
   mean_df["std"] = mean_df[invoker_cols].std(axis=1)
+  mean_df["var"] = mean_df[invoker_cols].var(axis=1)
 
   ax.plot(times, mean_df["mean"], label="Mean", color='k')
-  ax.plot(times, mean_df["mean"]+mean_df["std"], label="mean std", color='k', linestyle='dashed')
-  ax.plot(times, mean_df["mean"]-mean_df["std"], color='k', linestyle='dashed')
+  ax.plot(times, mean_df["var"], color='k', linestyle='dashed', label='Variance')
+
+  # ax.plot(times, mean_df["mean"]+mean_df["std"], label="mean std", color='k', linestyle='dashed')
+  # ax.plot(times, mean_df["mean"]-mean_df["std"], color='k', linestyle='dashed')
 
   ax.set_ylabel(nice_name)
   ax.set_xlabel("Time (min)")
@@ -144,5 +148,5 @@ def plot(path, metric):
     plt.savefig(save_fname, bbox_inches="tight")
     plt.close(fig)
 
-for metric in [("loadAvg", "Load Average"), ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory")]:
+for metric in [("loadAvg", "Load"), ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory")]:
   plot(path, metric=metric)

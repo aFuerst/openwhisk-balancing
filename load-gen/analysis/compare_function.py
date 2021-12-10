@@ -24,6 +24,7 @@ rand_str = "RandomForwardLoadBalancer"
 bound_str = "BoundedLoadsLoadBalancer"
 rr_str = "RoundRobinLB"
 shard_str = "ShardingContainerPoolBalancer"
+rlu_str = "RandomLoadUpdateBalancer"
 
 base_file = "parsed_successes.csv"
 
@@ -160,3 +161,4 @@ compare(shard_str, bound_str, args.path)
 compare(shard_str, rand_str, args.path)
 compare(bound_str, rand_str, args.path)
 compare(rr_str, rand_str, args.path)
+compare(shard_str, rlu_str, args.path)
