@@ -208,25 +208,19 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
     }
   }
 
-  def noisyLoad(load: Double, schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transid: TransactionId) : Double = {
+  def noisyLoad(load: Double)(implicit logging: Logging, transid: TransactionId) : Double = {
     if (popular_threshold == 0) {
       return load
     }
-
-    // val s = 1
-    // val server_arrival_rate = avg_arrival_rate  / schedulingState._consistentHashList.length
-    // val extra_anticip_load = server_arrival_rate / lbConfig.invoker.cores * s 
-    // // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
-    // val distrib = new NormalDistribution(extra_anticip_load, 0.1)
     return load + distrib.sample()
   }
 
-  def runLocalCondition(node: ConsistentCacheInvokerNode, actionName: String, schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transid: TransactionId) : Boolean = {
+  def runLocalCondition(node: ConsistentCacheInvokerNode, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transid: TransactionId) : Boolean = {
     // assume function is popular
     val load_opt = loads get node.invoker
     load_opt match {
       case Some(load) => {
-        val Lnoisy = noisyLoad(load, schedulingState, lbConfig)
+        val Lnoisy = noisyLoad(load)
         Lnoisy <= lbConfig.invoker.boundedCeil
       }
       case None => {
@@ -281,7 +275,7 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
           val id = (idx + i) % schedulingState._consistentHashList.length
           node = schedulingState._consistentHashList(id)
 
-          if (runLocalCondition(node, strName, schedulingState, lbConfig)) {
+          if (runLocalCondition(node, lbConfig)) {
             if (chain_len > 0) {
               logging.info(this, s"Activation ${activationId} was pushed ${chain_len} places to ${node.invoker}, from ${orig_invoker}")(transId)
             }
