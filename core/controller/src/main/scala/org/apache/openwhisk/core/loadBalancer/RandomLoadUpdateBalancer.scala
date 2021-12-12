@@ -180,15 +180,16 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
     for (node <- schedulingState._consistentHashList)
     {
       val load = schedulingState.getLoad(node, lbConfig.loadStrategy)
+      // logging.info(this, s"load for ${node} / ${node.invoker} == ${load}")(TransactionId.invokerRedis)
       loads += (node.invoker -> load)
-      tot_load += load 
+      tot_load = load + tot_load 
     }
     val avg_load = tot_load / schedulingState._consistentHashList.size
     val load_per_invoke = avg_load / lambda_hist
-    val extra_anticip_load = server_arrival_rate / load_per_invoke
-    extra_anticip_load = min(extra_anticip_load, 0.2)
+    var extra_anticip_load = server_arrival_rate / load_per_invoke
 
-    logging.info(this, s"avg_arrival_rate: ${avg_arrival_rate}; server_arrival_rate: ${server_arrival_rate}; extra_anticip_load: ${extra_anticip_load}; avg_load: ${avg_load}; lambda_hist: ${lambda_hist}; num_invokers: ${schedulingState._consistentHashList.size}")(TransactionId.invokerRedis)
+    logging.info(this, s"avg_arrival_rate: ${avg_arrival_rate}; server_arrival_rate: ${server_arrival_rate}; extra_anticip_load: ${extra_anticip_load}; tot_load: ${tot_load}; avg_load: ${avg_load}; lambda_hist: ${lambda_hist}; num_invokers: ${schedulingState._consistentHashList.size}")(TransactionId.invokerRedis)
+    extra_anticip_load = min(extra_anticip_load, 0.2)
     // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
     load_distrib = new NormalDistribution(extra_anticip_load, 0.1)
   }
@@ -204,7 +205,7 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
     // val Ti = actionName.hashCode().abs % P
     val Ti = sample_distrib.sample()
     if (true) {
-      logging.info(this, s"updating SHARDS popularity IAT for function ${actionName}")(transid)
+      // logging.info(this, s"updating SHARDS popularity IAT for function ${actionName}")(transid)
 
       val found = last_access_times get actionName
       found match {
