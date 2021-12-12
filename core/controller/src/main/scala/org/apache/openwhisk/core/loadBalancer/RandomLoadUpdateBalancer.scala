@@ -31,7 +31,7 @@ import org.apache.openwhisk.spi.SpiLoader
 
 import scala.concurrent.Future
 import scala.math.{min}
-import org.apache.commons.math3.distribution.{NormalDistribution}
+import org.apache.commons.math3.distribution.{NormalDistribution, UniformRealDistribution}
 import org.apache.commons.math3.stat.descriptive.rank.Percentile
 import scala.collection.mutable
 import org.apache.openwhisk.core.{WhiskConfig}
@@ -40,6 +40,7 @@ import org.apache.openwhisk.core.{WhiskConfig}
 import scala.util.Random
 import java.time.Instant
 import scala.collection.concurrent.TrieMap
+import java.util.concurrent.atomic.LongAdder
 
 /**
  * A loadbalancer that schedules workload based on random-forwarding consistent hashing load balancer
@@ -105,8 +106,11 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
   private var popular_threshold : Double = 0.0
   private var avg_arrival_rate : Double = 0.0
   private var ema_alph : Double = 0.9
-  private var distrib : NormalDistribution = new NormalDistribution(0.5, 0.1)
-
+  private var load_distrib : NormalDistribution = new NormalDistribution(0.5, 0.1)
+  private var sample_distrib : UniformRealDistribution = new UniformRealDistribution()
+  private val totalActivations : LongAdder= new LongAdder()
+  private var first_invoke : Option[Long] = None
+ 
   override def instance(whiskConfig: WhiskConfig, instance: ControllerInstanceId)(
     implicit actorSystem: ActorSystem,
     logging: Logging): LoadBalancer = {
@@ -156,25 +160,37 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
 
     val s = 1
     val server_arrival_rate = avg_arrival_rate  / schedulingState._consistentHashList.length
-    val extra_anticip_load = server_arrival_rate / lbConfig.invoker.cores * s 
-    // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
-    distrib = new NormalDistribution(extra_anticip_load, 0.1)
+    // var extra_anticip_load = server_arrival_rate / lbConfig.invoker.cores * s 
+
+    // Let Lambda=server arrival rate/#cores, so we are saying that extra anticip load is Lambda * staleness (==1 minute) . 
+    // Now, this is not strictly true, because it needs to be normalized by how long each function takes to finish. 
+    // Let the observed load be L. This correponds to a historic arrival rate of Lambda-hist. So the load-per-invok is L/Lambda-hist. 
+    // The extra load thus should be load-per-invok*server_arrival_rate. This was in my uncommitted simulator. Sorry :( 
+    // Implementation wise, for computing historic average arrival rate, just increment total number of invoks 
+    // (probably doing that somewhere anyways?), and divide by elapsed time from first invok to current time.
+    var lambda = server_arrival_rate / lbConfig.invoker.cores
+    val lambda_hist = first_invoke match {
+      case Some(time) => {
+        totalActivations.longValue.toDouble / ((now() - time) / 1000.0)
+      }
+      case None => 0.0
+    }
+    var tot_load = 0.0
 
     for (node <- schedulingState._consistentHashList)
     {
       val load = schedulingState.getLoad(node, lbConfig.loadStrategy)
       loads += (node.invoker -> load)
-      // packetStr match {
-      //   case Some(realStr) => {
-      //     val packet = realStr.parseJson.convertTo[RedisPacket]
-
-      //     schedulingState.updateCPUUsage(invoker.id, packet.cpuLoad, packet.running, packet.runningAndQ, packet.loadAvg)
-      //     schedulingState.updateMemUsage(invoker.id, packet.containerActiveMem, packet.usedMem)
-      //     schedulingState.updateRuntimeData(packet.priorities)
-      //   }
-      //   case None =>  logging.warn(this, s"Could not get redis packet for invoker $id")
-      // }
+      tot_load += load 
     }
+    val avg_load = tot_load / schedulingState._consistentHashList.size
+    val load_per_invoke = avg_load / lambda_hist
+    val extra_anticip_load = server_arrival_rate / load_per_invoke
+    extra_anticip_load = min(extra_anticip_load, 0.2)
+
+    logging.info(this, s"avg_arrival_rate: ${avg_arrival_rate}; server_arrival_rate: ${server_arrival_rate}; extra_anticip_load: ${extra_anticip_load}; avg_load: ${avg_load}; lambda_hist: ${lambda_hist}; num_invokers: ${schedulingState._consistentHashList.size}")(TransactionId.invokerRedis)
+    // val distrib = new NormalDistribution(server_arrival_rate*lbConfig.invoker.boundedCeil, 0.1*lbConfig.invoker.boundedCeil)
+    load_distrib = new NormalDistribution(extra_anticip_load, 0.1)
   }
 
   def now() : Long = {
@@ -183,10 +199,13 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
 
   def updateShardsPopular(actionName: String)(implicit logging: Logging, transid: TransactionId) : Unit = {
     val P = 100.0
-    val T = 100.0 // 20.0
+    val T = 100.0
     val r_orig = T/P // Effective sampling rate 
-    val Ti = actionName.hashCode().abs % P
-    if (Ti < T) {
+    // val Ti = actionName.hashCode().abs % P
+    val Ti = sample_distrib.sample()
+    if (true) {
+      logging.info(this, s"updating SHARDS popularity IAT for function ${actionName}")(transid)
+
       val found = last_access_times get actionName
       found match {
         case Some(last_access_time) => {
@@ -196,7 +215,6 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
           ema_iat = (iat * ema_alph) + ((1-ema_alph) * ema_iat)
           last_access_times += (actionName -> curr_t)
           inter_arival_times += (actionName -> ema_iat)
-          // logging.info(this, s"updating SHARDS popularity IAT for function ${actionName}, new IAT is ${ema_iat}")(transid)
 
         }
         case None => {
@@ -212,7 +230,7 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
     if (popular_threshold == 0) {
       return load
     }
-    return load + distrib.sample()
+    return load + load_distrib.sample()
   }
 
   def runLocalCondition(node: ConsistentCacheInvokerNode, lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transid: TransactionId) : Boolean = {
@@ -248,6 +266,12 @@ object RandomLoadUpdateBalancer extends LoadBalancerProvider {
     activationId: ActivationId,
     lbConfig: ShardingContainerPoolBalancerConfig)
     (implicit logging: Logging, transId: TransactionId, actorSystem: ActorSystem) : Option[InvokerInstanceId] = {   
+    if (first_invoke.isEmpty) {
+      first_invoke = Some(now())
+    }
+
+
+    totalActivations.increment()
     // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")(transId)
     
     val strName = s"${fqn.namespace}/${fqn.name}"
