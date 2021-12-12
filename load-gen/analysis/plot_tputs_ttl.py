@@ -79,7 +79,7 @@ def plot(paths, ttls, users):
   ax.bar(labels, colds, label="Cold", yerr=colds_std)
   ax.bar(labels, warms, bottom=colds, label="Warm", yerr=warms_std)
   
-  save_fname = os.path.join("{}-invokes-ttl.png".format(args.users))
+  save_fname = os.path.join("{}-invokes-ttl.pdf".format(args.users))
 
   ax.set_ylabel("Invocations")
   ax.set_ylabel("LoadBalancing Policy")

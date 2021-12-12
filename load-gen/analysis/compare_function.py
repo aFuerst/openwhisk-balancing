@@ -3,6 +3,7 @@ import os, sys
 from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib as mpl
+import matplotlib.patches as mpatches
 mpl.rcParams.update({'font.size': 14})
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype'] = 42
@@ -17,7 +18,7 @@ parser.add_argument("--path", nargs='+', required=True)
 parser.add_argument("--users", type=int, default=50, required=False)
 args = parser.parse_args()
 
-path = args.path[0]
+path = args.path[1]
 users = args.users
 
 rand_str = "RandomForwardLoadBalancer"
@@ -61,6 +62,7 @@ def get_warm_times(df):
 
 def mean_lats_per_fn(expf):
   df = pd.read_csv(expf, header=0, usecols=["function", "cold", "latency", "activation_id"])
+  # df = df[df['cold']==False]
   ldf = df[['function', 'latency']]
   lgrps = ldf.groupby(['function'])
   #Also need the length of the list for correct normalization? 
@@ -101,7 +103,7 @@ def Wnorms(expfs):
   C=sum(counts)
   mean_warm = pd.Series((norm_warm*counts)/C, index=mean_warm.index)
   # print(mean_warm)
-  return mean_warm
+  return mean_warm, counts
   #sum(mean_warm['Wnorm'])
 
 def compare(numerator_str, denom_str, paths):
@@ -109,11 +111,11 @@ def compare(numerator_str, denom_str, paths):
   # print("{}-{}".format(users, numerator_str))
   for pth in paths:
     if "{}-{}".format(users, numerator_str) in pth:
-      # print(pth)
+      # print("num", pth)
       numerator_paths.append(os.path.join(pth, base_file))
   # numerator_path = os.path.join(path, "{}-{}".format(users, numerator_str), base_file)
   # print(numerator_str)
-  numerator=Wnorms(numerator_paths)
+  numerator, num_counts = Wnorms(numerator_paths)
   # sum(bounded['Wnorm'])
   # print(numerator)
   # denom_path = os.path.join(path, "{}-{}".format(users, denom_str), base_file)
@@ -121,39 +123,57 @@ def compare(numerator_str, denom_str, paths):
   # print("{}-{}".format(users, denom_str))
   for pth in paths:
     if "{}-{}".format(users, denom_str) in pth:
-      # print(pth)
+      # print("demon", pth)
       denom_paths.append(os.path.join(pth, base_file))
   # print(denom_str)
-  denom=Wnorms(denom_paths)
+  denom, demon_counts =Wnorms(denom_paths)
 
   fig, ax = plt.subplots()
   plt.tight_layout()
   fig.set_size_inches(5,3)
 
-  r2_ch_rl = numerator/denom
-  # print(sorted(r2_ch_rl))
-  ax.hlines(1.0, xmin=-0.1, xmax=len(r2_ch_rl)-.9, color='black')
+  compared = numerator/denom
+  # print(sorted(compared))
+  ax.hlines(1.0, xmin=-0.1, xmax=len(compared)+1-.9, color='black')
 
-  # ax.plot(sorted(r2_ch_rl),marker='o',alpha=0.3)
+  # ax.plot(sorted(compared),marker='o',alpha=0.3)
 
   ymin = []
   ymax = []
-  for pt in sorted(r2_ch_rl):
+  for pt in sorted(compared):
     if pt <= 1:
       ymin.append(pt)
       ymax.append(1)
     else:
       ymin.append(1)
       ymax.append(pt)
-  ax.vlines([i for i in range(len(ymin))],ymin,ymax)
+  
+  handles= []
+  ax.vlines([i for i in range(len(ymin))],ymin,ymax, color='blue')
+  handles.append(mpatches.Patch(color="blue", label='Function'))
+
+  weighted_total = 0
+  total = 0
+  for idx in compared.index:
+    weighted_total += compared[idx] * (num_counts[idx] + demon_counts[idx])
+    total += num_counts[idx] + demon_counts[idx]
+
+  avg = weighted_total / total
+  ax.vlines([len(compared)], 1, avg, color='red')
+  handles.append(mpatches.Patch(color="red", label='Global Average'))
+  ax.legend(handles=handles, loc='upper left')#, labels=leg_labels)
 
   # ax.set_ylabel("Invoker {}".format(metric))
   ax.set_ylabel("Normalized latency")
   # ax.legend()
   # ax.set_yscale('log')
-  ax.set_title("{} / {}".format(numerator_str, denom_str))
-  save_fname = os.path.join("{}-compare-functions-{}-{}.png".format(users, numerator_str, denom_str))
-  print(save_fname)
+
+  map_labs = {'BoundedLoadsLoadBalancer': 'Bounded', 'RandomForwardLoadBalancer': 'Random Forward',
+            'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'Sharding', 'RandomLoadUpdateBalancer': 'RLU'}
+
+  ax.set_title("{} / {}".format(map_labs[numerator_str], map_labs[denom_str]))
+  save_fname = os.path.join("{}-compare-functions-{}-{}.pdf".format(users, numerator_str, denom_str))
+  print(save_fname, avg)
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 
@@ -162,3 +182,4 @@ compare(shard_str, rand_str, args.path)
 compare(bound_str, rand_str, args.path)
 compare(rr_str, rand_str, args.path)
 compare(shard_str, rlu_str, args.path)
+compare(rand_str, rlu_str, args.path)

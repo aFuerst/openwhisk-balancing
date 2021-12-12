@@ -124,9 +124,9 @@ def plot(paths, users, warm):
   ax2.set_ylabel("Served functions")
 
   if warm:
-    save_fname = os.path.join("{}-compare-overload-warm.png".format(args.users))
+    save_fname = os.path.join("{}-compare-overload-warm.pdf".format(args.users))
   else:
-    save_fname = os.path.join("{}-compare-overload.png".format(args.users))
+    save_fname = os.path.join("{}-compare-overload.pdf".format(args.users))
 
   ax.legend(handles=handles, labels=leg_labels)
   print(save_fname)

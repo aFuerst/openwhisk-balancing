@@ -71,9 +71,9 @@ def plot(paths, users):
   ax.bar(labels, warms, bottom=colds, label="Warm", yerr=warms_std)
   
   if args.ceil:
-    save_fname = os.path.join("{}-invokes-ceil.png".format(args.users))
+    save_fname = os.path.join("{}-invokes-ceil.pdf".format(args.users))
   else:
-    save_fname = os.path.join("{}-invokes.png".format(args.users))
+    save_fname = os.path.join("{}-invokes.pdf".format(args.users))
 
   ax.set_ylabel("Invocations")
   ax.set_ylabel("LoadBalancing Policy")

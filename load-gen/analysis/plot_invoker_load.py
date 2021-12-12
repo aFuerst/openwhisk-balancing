@@ -102,7 +102,7 @@ def plot(path, metric):
   # ax.set_xticklabels(ax.get_xticks(), rotation=45, rotation_mode="anchor")
   ax.legend() # bbox_to_anchor=(1.6,.6), loc="right", columnspacing=1
 
-  save_fname = os.path.join(save_pth, "{}-{}.png".format(users, metric))
+  save_fname = os.path.join(save_pth, "{}-{}.pdf".format(users, metric))
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
   # print(save_fname)
@@ -144,7 +144,7 @@ def plot(path, metric):
     # print(metric, mean_df.columns)
     ax.plot(times, mean_df["mean"], label="Mean Load", color='k')
     ax.legend()
-    save_fname = os.path.join(save_pth, "{}-{}.png".format(users, "load_vs_latency"))
+    save_fname = os.path.join(save_pth, "{}-{}.pdf".format(users, "load_vs_latency"))
     plt.savefig(save_fname, bbox_inches="tight")
     plt.close(fig)
 

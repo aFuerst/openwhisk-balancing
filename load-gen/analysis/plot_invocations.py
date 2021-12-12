@@ -40,7 +40,7 @@ def plot(path):
   ax.set_xlabel("Time (sec)")
   ax.set_xticklabels(ax.get_xticks(), rotation=45, rotation_mode="anchor")
 
-  save_fname = os.path.join(save_pth, "{}-invocations.png".format(users))
+  save_fname = os.path.join(save_pth, "{}-invocations.pdf".format(users))
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 

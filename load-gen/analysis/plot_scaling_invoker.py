@@ -111,7 +111,7 @@ def plot(path, metric):
 
   ax.legend(bbox_to_anchor=(1.6,.6), loc="right", columnspacing=1)
 
-  save_fname = os.path.join(save_pth, "{}-{}.png".format(users, metric))
+  save_fname = os.path.join(save_pth, "{}-{}.pdf".format(users, metric))
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 
