@@ -2,11 +2,14 @@ from wsk_interact import *
 import os
 from time import time, sleep
 from collections import defaultdict
+import pickle
+from concurrent.futures import ThreadPoolExecutor
 # import pandas as pd
 
 host="https://172.29.200.161:10001"
 auth="16e211d7-9559-4c7e-9f33-cf32d5f1b8e0:jFZq1YnhzHIiMHwHK7kuZ7ZBaISXY75dV6WhNDZPV6iivSwzhocyVFYuqMzOmjLx"
 
+pool = ThreadPoolExecutor(max_workers=3)
 set_properties(host=host, auth=auth)
 class Action:
   def __init__(self, name, url, warmtime, coldtime):
@@ -27,20 +30,36 @@ warm_results = defaultdict(list)
 
 for name, action in action_dict.items():
   while len(warm_results[name]) < 10:
-    start = time()
-    r = requests.get(action.url, verify=False)
-    latency = time() - start
-    ret_json = r.json()
-    if "cold" in ret_json:
-        if not ret_json["cold"]:
-          warm_results[name].append(latency)
-        else:
-          warm_results[name].append(latency)
+    futures = []
+    for i in range(6):
+      future = invoke_web_action_async(action.url, pool, auth, host)
+      futures.append((action, future))
+    for action, future in futures:
+      was_cold, latency, ret_json, activation_id = future.result()
+      if was_cold == True:
+        cold_results[name].append(latency)
+      elif was_cold == False:
+        warm_results[name].append(latency)
+      else:
+        pass
+
+    # start = time()
+    # r = requests.get(action.url, verify=False)
+    # latency = time() - start
+    # ret_json = r.json()
+    # if "cold" in ret_json:
+    #     if not ret_json["cold"]:
+    #       cold_results[name].append(latency)
+    #     else:
+    #       warm_results[name].append(latency)
 
 for k in warm_results.keys():
   print("{} warm results, avg = {}; min = {}".format(k, sum(warm_results[k]) / len(warm_results[k]), min(warm_results[k])))
   # if len(cold_results[k]) > 0:
   #   print("cold results, avg = {}; min = {}".format(k), sum(cold_results[k]) / len(cold_results[k]), min(cold_results[k]))
+
+with open("warmdata2.pckl", "w+b") as f:
+  pickle.dump(warm_results, f)
 
 # df = pd.DataFrame.from_records(data, columns=[func, "was_cold", "latency"])
 # df.to_csv("run.csv")

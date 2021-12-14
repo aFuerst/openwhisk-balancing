@@ -54,6 +54,7 @@ def plot(path, metric):
           # [2021-10-28T13:43:28.907Z]
           parsedtime = datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ")
           pack["time"] = parsedtime
+          pack["vm_cpu"] = pack["us"] + pack["sy"]
 
           file_data.append(pack)
           # break
@@ -62,7 +63,8 @@ def plot(path, metric):
     df = df.resample("S").mean().interpolate()
     df.index = df.index - (df.index[0] - time_min)
     xs = date_idx_to_min(df.index)
-    df[metric] = df[metric] / 4
+    if metric == "loadAvg":
+      df[metric] = df[metric] / 4
     ax.plot(xs, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
     # limit = max(limit, df.index[-1])
     # time_min = min(time_min, df.index[0])
@@ -88,7 +90,8 @@ def plot(path, metric):
   mean_df["var"] = mean_df[invoker_cols].var(axis=1)
 
   ax.plot(times, mean_df["mean"], label="Mean", color='k')
-  ax.plot(times, mean_df["var"], color='k', linestyle='dashed', label='Variance')
+  if metric != "vm_cpu":
+    ax.plot(times, mean_df["var"], color='k', linestyle='dashed', label='Variance')
 
   # ax.plot(times, mean_df["mean"]+mean_df["std"], label="mean std", color='k', linestyle='dashed')
   # ax.plot(times, mean_df["mean"]-mean_df["std"], color='k', linestyle='dashed')
@@ -148,5 +151,5 @@ def plot(path, metric):
     plt.savefig(save_fname, bbox_inches="tight")
     plt.close(fig)
 
-for metric in [("loadAvg", "Load"), ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory")]:
+for metric in [("loadAvg", "Load"), ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory"), ("vm_cpu", "CPU")]:
   plot(path, metric=metric)

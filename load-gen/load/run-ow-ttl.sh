@@ -1,13 +1,15 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=a0ebde37-0272-4d2e-b2ed-77f93f9e0158:WW5BI37G7ppqVPnOAgapbsUxGirIsBo1iXATp7ufGdK5wO44CbPbQvtUbCdHxU50
+export AUTH=16e211d7-9559-4c7e-9f33-cf32d5f1b8e0:jFZq1YnhzHIiMHwHK7kuZ7ZBaISXY75dV6WhNDZPV6iivSwzhocyVFYuqMzOmjLx
 
-for ITERATION in {0..2}
+for ITERATION in {0..3}
 do
 
-for USERS in 30 50 70
+for USERS in 20 #30 50 70
 do
+
+export USER_TOT=$USERS
 
 for BALANCER in ShardingContainerPoolBalancer
 do
@@ -25,7 +27,7 @@ redisPass='OpenWhisk'
 redisPort=6379
 ansible=/home/ow/openwhisk-caching/ansible
 
-BASEPATH="/extra/alfuerst/openwhisk-logs/30min-compare-TTL/$ITERATION/"
+BASEPATH="/extra/alfuerst/openwhisk-logs/30min-compare-TTL-bursty/$ITERATION/"
 
 r=5
 warmup=$(($USERS/$r))
@@ -44,7 +46,7 @@ ANSIBLE_HOST="$user@172.29.200.161"
 sshpass -p $pw ssh $ANSIBLE_HOST "$cmd" &> "$pth/logs.txt"
 
 
-locust --headless --users $USERS -r $r -f locustfile-transaction.py --csv "$pth/logs" --log-transactions-in-file --run-time 30m &>> "$pth/logs.txt"
+locust --headless -f locustfile-bursty.py --csv "$pth/logs" --log-transactions-in-file &>> "$pth/logs.txt"
 python3 locust_parse.py "$pth/logs_transactions.csv"
 
 sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/controller0/controller0_logs.log" $pth

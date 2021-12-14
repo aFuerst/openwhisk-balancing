@@ -3,7 +3,7 @@
 for ITER in 0 1 2 3
 do
 
-for USERS in 20 50 70
+for USERS in 20 50 # 70
 do
 
 for BAL in BoundedLoadsLoadBalancer RoundRobinLB ShardingContainerPoolBalancer RandomForwardLoadBalancer RandomLoadUpdateBalancer

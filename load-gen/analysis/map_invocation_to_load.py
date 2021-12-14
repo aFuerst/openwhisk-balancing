@@ -45,6 +45,8 @@ def map_load(path, metric="loadAvg"):
               key = key.strip("\"")
               pack[key] = float(val)
 
+          pack["vm_cpu"] = pack["us"] + pack["sy"]
+
           # [2021-10-28T13:43:28.907Z]
           parsedtime = datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ")
           pack["time"] = parsedtime
@@ -196,6 +198,11 @@ def plot_relationship(load_df, plotCold=False, both=False, addtl=""):
     else:
       label="warm"
   ax.plot(xs, ys, 'o', label=label)
+
+  b, a = np.polyfit(xs, ys, deg=1)
+  xseq = np.linspace(min(xs), max(xs), num=100)
+  ax.plot(xseq, a + b * xseq, label="Polyfit")
+
   ax.set_ylabel("Invoker {}".format(metric))
   ax.set_xlabel("Normalized latency")
   ax.legend()
@@ -238,17 +245,18 @@ def plotPerFunc(load_df, metric):
     os.mkdir(os.path.join(path, "latencies"))
   except:
     pass
+  colors = ['black', 'silver', 'maroon', 'orange', 'darkgreen', 'lime', 'navy', 'magenta', 'indigo', 'crimson', 'steelblue', 'pink']
   for freq in points.keys():
 
     fig, ax = plt.subplots()
     plt.tight_layout()
     fig.set_size_inches(5,3)
-    for func in points[freq]:
+    for i, func in enumerate(sorted(points[freq])):
       xs = [norm for norm,load in points[freq][func]]
       ys = [load for norm,load in points[freq][func]]
       # ax.plot(xs, ys, 'o', label=func)
-      if len(xs) == 0:
-        print(func, freq)
+      if len(xs) < 2:
+        # print(func, freq)
         continue
 
 
@@ -258,28 +266,28 @@ def plotPerFunc(load_df, metric):
       xseq = np.linspace(min(xs), max(xs), num=100)
 
       # Plot regression line
-      ax.plot(xseq, a + b * xseq, label=func)  
+      ax.plot(xseq, a + b * xseq, label=func, color=colors[i])  
       # break
 
     ax.set_ylabel("Invoker {}".format(metric))
     ax.set_xlabel("Normalized latency")
     ax.legend()
-    save_fname = os.path.join(path, "latencies", "{}-{}.png".format("latency_to_load", freq))
+    save_fname = os.path.join(path, "latencies", "{}-{}-{}.png".format("latency_to_load", metric, freq))
     plt.savefig(save_fname, bbox_inches="tight")
     plt.close(fig)
 
 metric="loadAvg"
 load_df = map_load(path, metric=metric)
-metric = "-loadAvg"
+# metric = "-loadAvg"
 plot_relationship(load_df, plotCold=False, addtl=metric)
 plot_relationship(load_df, plotCold=True, addtl=metric)
 plot_relationship(load_df, both=True, addtl=metric)
 plotPerFunc(load_df, metric=metric)
 
-metric="cpuLoad"
+metric="vm_cpu"
 load_df = map_load(path, metric=metric)
-metric="-cpuLoad"
+# metric="-vm_cpu"
 plot_relationship(load_df, plotCold=False, addtl=metric)
 plot_relationship(load_df, plotCold=True, addtl=metric)
 plot_relationship(load_df, both=True, addtl=metric)
-
+plotPerFunc(load_df, metric=metric)

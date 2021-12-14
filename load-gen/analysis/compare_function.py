@@ -20,6 +20,8 @@ args = parser.parse_args()
 
 path = args.path[1]
 users = args.users
+# for p in args.path:
+#   print(p)
 
 rand_str = "RandomForwardLoadBalancer"
 bound_str = "BoundedLoadsLoadBalancer"
@@ -41,16 +43,6 @@ for warm_time, k in zip(min_warm_times, actions):
       out.append((name,warm_time))
 warm_times = pd.DataFrame(out,columns=['function',"warm"])
 warm_times.index = warm_times['function']
-
-def path_to_key(pth):
-  # print(pth)
-  parts = pth.split("/")
-  # print(parts, [l for l in parts if "compare" in l])
-  wanted = [l for l in parts if "compare" in l]
-  if len(wanted) != 1:
-    print("weird file path, please support!: {}".format(pth))
-    raise Exception("Failure")
-  return wanted[0][len("compare-"):]
 
 def get_warm_times(df):
   warmed = df[df["cold"] == False]
@@ -110,9 +102,11 @@ def compare(numerator_str, denom_str, paths):
   numerator_paths = []
   # print("{}-{}".format(users, numerator_str))
   for pth in paths:
-    if "{}-{}".format(users, numerator_str) in pth:
+    if "{}-{}".format(users, numerator_str) in pth and os.path.exists(os.path.join(pth, base_file)):
       # print("num", pth)
       numerator_paths.append(os.path.join(pth, base_file))
+  if len(numerator_paths) == 0:
+    return
   # numerator_path = os.path.join(path, "{}-{}".format(users, numerator_str), base_file)
   # print(numerator_str)
   numerator, num_counts = Wnorms(numerator_paths)
@@ -122,9 +116,11 @@ def compare(numerator_str, denom_str, paths):
   denom_paths = []
   # print("{}-{}".format(users, denom_str))
   for pth in paths:
-    if "{}-{}".format(users, denom_str) in pth:
+    if "{}-{}".format(users, denom_str) in pth and os.path.exists(os.path.join(pth, base_file)):
       # print("demon", pth)
       denom_paths.append(os.path.join(pth, base_file))
+  if len(denom_paths) == 0:
+    return
   # print(denom_str)
   denom, demon_counts =Wnorms(denom_paths)
 
@@ -182,4 +178,6 @@ compare(shard_str, rand_str, args.path)
 compare(bound_str, rand_str, args.path)
 compare(rr_str, rand_str, args.path)
 compare(shard_str, rlu_str, args.path)
+compare(bound_str, rlu_str, args.path)
+
 compare(rand_str, rlu_str, args.path)
