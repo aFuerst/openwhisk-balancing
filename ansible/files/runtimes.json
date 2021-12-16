@@ -61,7 +61,7 @@
               "kind": "python:3",
               "default": false,
               "image": {
-                  "prefix": "openwhisk",
+                  "prefix": "alfuerst",
                   "name": "action-python-v3.7",
                   "tag": "latest"
               },
@@ -75,8 +75,8 @@
               "kind": "python:ai",
               "default": true,
               "image": {
-                  "prefix": "openwhisk",
-                  "name": "python3aiaction",
+                  "prefix": "alfuerst",
+                  "name": "action-python-v3.6-ai",
                   "tag": "latest"
               },
               "deprecated": false,
