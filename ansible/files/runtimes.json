@@ -18,7 +18,7 @@
               "kind": "nodejs:12",
               "default": false,
               "image": {
-                  "prefix": "openwhisk",
+                  "prefix": "alfuerst",
                   "name": "action-nodejs-v12",
                   "tag": "latest"
               },
@@ -32,7 +32,7 @@
               "kind": "nodejs:14",
               "default": true,
               "image": {
-                  "prefix": "openwhisk",
+                  "prefix": "alfuerst",
                   "name": "action-nodejs-v14",
                   "tag": "latest"
               },

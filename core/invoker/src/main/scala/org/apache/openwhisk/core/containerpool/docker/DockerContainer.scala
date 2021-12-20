@@ -40,9 +40,17 @@ import org.apache.openwhisk.core.containerpool.logging.LogLine
 import org.apache.openwhisk.core.entity.ExecManifest.ImageName
 import org.apache.openwhisk.http.Messages
 
+import java.net.ServerSocket
+
 object DockerContainer {
 
   private val byteStringSentinel = ByteString(Container.ACTIVATION_LOG_SENTINEL)
+
+  private def freePort(): Int = {
+    val socket = new ServerSocket(0)
+    try socket.getLocalPort
+    finally if (socket != null) socket.close()
+  }
 
   /**
    * Creates a container running on a docker daemon.
@@ -87,6 +95,13 @@ object DockerContainer {
 
     // NOTE: --dns-option on modern versions of docker, but is --dns-opt on docker 1.12
     val dnsOptString = if (docker.clientVersion.startsWith("1.12")) { "--dns-opt" } else { "--dns-option" }
+    var custPort : Seq[String] = Seq.empty
+    var port = 0
+    if (network == "host") {
+      port = freePort()
+      custPort = Seq("-e", s"OW_PORT=${port}")
+    }
+
     val args = Seq(
       "--cpu-shares",
       cpuShares.toString,
@@ -101,7 +116,8 @@ object DockerContainer {
       dnsSearch.flatMap(d => Seq("--dns-search", d)) ++
       dnsOptions.flatMap(d => Seq(dnsOptString, d)) ++
       name.map(n => Seq("--name", n)).getOrElse(Seq.empty) ++
-      params
+      params ++
+      custPort
 
     val registryConfigUrl = registryConfig.map(_.url).getOrElse("")
     val imageToUse = image.merge.resolveImageName(Some(registryConfigUrl))
@@ -142,12 +158,17 @@ object DockerContainer {
             Future.failed(BlackboxStartupError(Messages.imagePullError(imageToUse)))
           }
       }
-      ip <- docker.inspectIPAddress(id, network).recoverWith {
-        // remove the container immediately if inspect failed as
-        // we cannot recover that case automatically
-        case _ =>
-          docker.rm(id)
-          Future.failed(WhiskContainerStartupError(Messages.resourceProvisionError))
+      ip <- if (network == "host") {
+        log.info(this, s"Starting container on 127.0.0.1:${port}")
+        Future.successful(ContainerAddress("127.0.0.1", port))
+      } else {
+        docker.inspectIPAddress(id, network).recoverWith {
+          // remove the container immediately if inspect failed as
+          // we cannot recover that case automatically
+          case _ =>
+            docker.rm(id)
+            Future.failed(WhiskContainerStartupError(Messages.resourceProvisionError))
+        }
       }
     } yield new DockerContainer(id, ip, useRunc)
   }
