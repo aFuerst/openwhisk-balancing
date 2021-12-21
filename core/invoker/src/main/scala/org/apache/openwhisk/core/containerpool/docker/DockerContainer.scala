@@ -159,8 +159,8 @@ object DockerContainer {
           }
       }
       ip <- if (network == "host") {
-        log.info(this, s"Starting container on 127.0.0.1:${port}")
-        Future.successful(ContainerAddress("127.0.0.1", port))
+        log.info(this, s"Starting container on 172.17.0.1:${port}")
+        Future.successful(ContainerAddress("172.17.0.1", port))
       } else {
         docker.inspectIPAddress(id, network).recoverWith {
           // remove the container immediately if inspect failed as
