@@ -3,13 +3,14 @@ Reference : https://github.com/rcmalli/keras-squeezenet
 SqueezeNet v1.1 Implementation using Keras Functional Framework 2.0
 
 """
+import tensorflow
 from keras_applications.imagenet_utils import _obtain_input_shape
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.layers import Input, Convolution2D, MaxPooling2D, Activation, concatenate, Dropout
-from tensorflow.python.keras.layers import GlobalAveragePooling2D, GlobalMaxPooling2D
-from tensorflow.python.keras.models import Model
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Input, Convolution2D, MaxPooling2D, Activation, concatenate, Dropout
+from tensorflow.keras.layers import GlobalAveragePooling2D, GlobalMaxPooling2D
+from tensorflow.keras.models import Model
 # from tensorflow.keras.utils import get_source_inputs
-from tensorflow.python.keras.utils import get_file
+from tensorflow.keras.utils import get_file
 from tensorflow.python.keras.utils import layer_utils
 
 sq1x1 = "squeeze1x1"

@@ -34,10 +34,10 @@ def main(args):
       count_cmd = 'count='+str(count)
 
       out_fd = open(tmp + 'io_write_logs', 'w')
-      dd = subprocess.Popen(['dd', 'if=/dev/zero', 'of=/tmp/out', bs_cmd, count_cmd], stderr=out_fd, stdout=out_fd)
+      dd = subprocess.Popen(['/bin/dd', 'if=/dev/zero', 'of=/tmp/out', bs_cmd, count_cmd], stderr=out_fd, stdout=out_fd)
       dd.communicate()
       latency = time() - start
-      subprocess.check_output(['ls', '-alh', tmp])
+      subprocess.check_output(['/bin/ls', '-alh', tmp])
 
       total_bytes = (bs * 1024) * count
       tput = "{0} bytes ({1} MBs), {2} s, {3} MB/s".format(total_bytes, total_bytes/(1024*1024), latency, total_bytes / (1024*1024) / latency)

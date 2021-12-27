@@ -59,7 +59,7 @@
       "python": [
           {
               "kind": "python:3",
-              "default": false,
+              "default": true,
               "image": {
                   "prefix": "alfuerst",
                   "name": "action-python-v3.7",
@@ -73,7 +73,7 @@
           },
           {
               "kind": "python:ai",
-              "default": true,
+              "default": false,
               "image": {
                   "prefix": "alfuerst",
                   "name": "action-python-v3.6-ai",

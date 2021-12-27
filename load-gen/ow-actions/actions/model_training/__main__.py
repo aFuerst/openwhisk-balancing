@@ -1,10 +1,11 @@
 # import boto3
 msg = "good"
+# import re
 import traceback
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
-    from sklearn.externals import joblib
+    import joblib
 
     import urllib.request
     import pandas as pd
@@ -31,6 +32,7 @@ def main(args):
     global cold
     was_cold = cold
     cold = False
+    # return {"body": { "latency":-1, "cold":was_cold, "msg":msg }}
     try:
         dataset_bucket = args.get("dataset_bucket", "")
         dataset_object_key = args.get("dataset_object_key", "")

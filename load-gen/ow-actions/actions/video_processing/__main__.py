@@ -53,6 +53,7 @@ def main(args):
     global cold
     was_cold = cold
     cold = False
+    # return {"body": { "msg":"TEST", "latency":0, "cold":was_cold }}
     try:
         input_bucket = args.get("input_bucket", "")
         object_key = args.get("object_key", "")

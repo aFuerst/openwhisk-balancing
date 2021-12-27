@@ -7,12 +7,15 @@ from threading import Thread
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-zips = ["chameleon.zip",  "cnn_image_classification.zip",  "dd.zip",  "float_operation.zip",  "gzip_compression.zip",  "hello.zip",  "image_processing.zip",  "lin_pack.zip",  "model_training.zip",  "pyaes.zip",  "video_processing.zip", "json_dumps_loads.zip"]
+zips = ["chameleon.zip",  "cnn_image_classification.zip",  "dd.zip",  "float_operation.zip",  "gzip_compression.zip",  "hello.zip", "image_processing.zip",  "lin_pack.zip",  "model_training.zip",  "pyaes.zip",   "video_processing.zip", "json_dumps_loads.zip"]
 actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
-containers = ["python:ai-vid", "python:ai", "python:ai-vid", "python:ai", "python:3", "python:3", "python:ai", "python:ai", "python:ai", "python:ai-vid", "python:ai-vid", "python:3"]
+# containers = ["python:ai-vid", "python:ai", "python:ai-vid", "python:ai", "python:3", "python:3", "python:ai", "python:ai", "python:ai", "python:ai-vid", "python:ai-vid", "python:3"]
+containers = ["python:3", "python:ai", "python:3", "python:3", "python:3", "python:3", "python:ai", "python:ai", "python:ai", "python:ai", "python:ai", "python:3"]
 # mem = [512, 1024, 256, 128, 128, 256, 640, 640, 512, 1024, 894, 128]
-mem = [128, 512, 256, 256, 128, 128, 256, 256, 256, 128, 384, 128]
-warm_times = [0.055, 1.939, 1.184, 0.044, 0.352, 0.034, 6.365, 0.049, 8.357, 0.633, 31.036, 0.279]
+# mem = [128, 512, 256, 256, 128, 128, 256, 256, 256, 128, 384, 128]
+mem = [128, 512, 256, 256, 128, 128, 512, 256, 256, 256, 512, 128]
+warm_times = [0.055, 1.939, 1.184, 0.044, 0.352,
+              0.034, 6.365, 0.049, 8.357, 0.633, 31.036, 0.279]
 cold_times = [2.740, 7.725, 2.824, 2.896, 2.715, 2.251, 9.468, 2.868, 11.934, 3.000, 35.300, 2.502]
 max_wait = 10*60
 
@@ -63,7 +66,7 @@ def add_web_action(name:str, path:str, container:str="python:3", memory:int=256,
     return url
 
 def invoke_action(name:str, act_args:dict, return_code:bool=False):
-    popen_args = ["wsk", "action", "invoke", "--result", name]
+    popen_args = ["wsk", "-i", "action", "invoke", "--result", name]
     for key, value in act_args.items():
         popen_args += ["--param", str(key), str(value)]
     start = time()
@@ -160,15 +163,21 @@ def wait_all_popen(procs):
         # print(proc.stdout.read())
 
 if __name__ == "__main__":
-    set_properties()
+    set_properties(host="https://172.29.200.161:10001", auth="5973c02d-4c68-4b6d-af13-17f9e3e82028:ezIS6fF9BREmaMLGZrVDT7Y3SauPQdt7u1rNsDnHhUPweeC186J0OePoe1kabdh4")
     for zip_file, action_name, container, memory in zip(zips, actions, containers, mem):
-        path = os.path.join("../py", zip_file)
+        path = os.path.join("../ow-actions", zip_file)
         add_action(action_name, path, container, memory=memory)
         ret_json, latency = invoke_action(action_name, {})
-        print(ret_json, latency)
+        print(action_name, ret_json, latency)
 
-    add_action("js_act_1", "../js/hello.js", container="nodejs:10")
-    p = invoke_action_async("js_act_1", {"name":"ben"})
-    wait_all_popen([p])
-    print("async", p)
-    print(invoke_action("js_act_1", {"name":"ben"}))
+    # ret_json, latency = invoke_action("train", {})
+    # print(ret_json, latency)
+    
+    # ret_json, latency = invoke_action("image", {})
+    # print(ret_json, latency)
+
+    # add_action("js_act_1", "../js/hello.js", container="nodejs:10")
+    # p = invoke_action_async("js_act_1", {"name":"ben"})
+    # wait_all_popen([p])
+    # print("async", p)
+    # print(invoke_action("js_act_1", {"name":"ben"}))

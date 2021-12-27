@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 # import pandas as pd
 
 host="https://172.29.200.161:10001"
-auth="16e211d7-9559-4c7e-9f33-cf32d5f1b8e0:jFZq1YnhzHIiMHwHK7kuZ7ZBaISXY75dV6WhNDZPV6iivSwzhocyVFYuqMzOmjLx"
+auth="5973c02d-4c68-4b6d-af13-17f9e3e82028:ezIS6fF9BREmaMLGZrVDT7Y3SauPQdt7u1rNsDnHhUPweeC186J0OePoe1kabdh4"
 
 pool = ThreadPoolExecutor(max_workers=3)
 set_properties(host=host, auth=auth)
@@ -29,36 +29,38 @@ cold_results = defaultdict(list)
 warm_results = defaultdict(list)
 
 for name, action in action_dict.items():
-  while len(warm_results[name]) < 10:
-    futures = []
-    for i in range(6):
-      future = invoke_web_action_async(action.url, pool, auth, host)
-      futures.append((action, future))
-    for action, future in futures:
-      was_cold, latency, ret_json, activation_id = future.result()
-      if was_cold == True:
-        cold_results[name].append(latency)
-      elif was_cold == False:
-        warm_results[name].append(latency)
-      else:
-        pass
+  print(name)
+  while len(warm_results[name]) < 15:
+    # futures = []
+    # for i in range(6):
+    #   future = invoke_web_action_async(action.url, pool, auth, host)
+    #   futures.append((action, future))
+    # for action, future in futures:
+    #   was_cold, latency, ret_json, activation_id = future.result()
+    #   if was_cold == True:
+    #     cold_results[name].append(latency)
+    #   elif was_cold == False:
+    #     warm_results[name].append(latency)
+    #   else:
+    #     pass
 
-    # start = time()
-    # r = requests.get(action.url, verify=False)
-    # latency = time() - start
-    # ret_json = r.json()
-    # if "cold" in ret_json:
-    #     if not ret_json["cold"]:
-    #       cold_results[name].append(latency)
-    #     else:
-    #       warm_results[name].append(latency)
-
+    start = time()
+    r = requests.get(action.url, verify=False)
+    latency = time() - start
+    ret_json = r.json()
+    if "cold" in ret_json:
+        if ret_json["cold"]:
+          cold_results[name].append(latency)
+        else:
+          warm_results[name].append(latency)
+    else:
+      print("weird json:", ret_json)
 for k in warm_results.keys():
   print("{} warm results, avg = {}; min = {}".format(k, sum(warm_results[k]) / len(warm_results[k]), min(warm_results[k])))
   # if len(cold_results[k]) > 0:
   #   print("cold results, avg = {}; min = {}".format(k), sum(cold_results[k]) / len(cold_results[k]), min(cold_results[k]))
 
-with open("warmdata2.pckl", "w+b") as f:
+with open("warmdata_16.pckl", "w+b") as f:
   pickle.dump(warm_results, f)
 
 # df = pd.DataFrame.from_records(data, columns=[func, "was_cold", "latency"])

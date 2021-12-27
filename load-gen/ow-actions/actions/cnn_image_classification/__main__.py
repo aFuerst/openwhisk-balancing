@@ -1,20 +1,21 @@
 msg = "good"
 import traceback
 try:
-    # import boto3
-    from tensorflow.python.keras.preprocessing import image
-    from tensorflow.python.keras.applications.resnet50 import preprocess_input, decode_predictions
-    from tensorflow.python.keras.utils import get_file
-    from squeezenet import SqueezeNet
     import numpy as np
     import uuid
     from time import time
+
+    # import boto3
+    import tensorflow
+    from tensorflow.keras.preprocessing import image
+    from tensorflow.keras.applications.resnet50 import preprocess_input, decode_predictions
+    from tensorflow.keras.utils import get_file
+    from squeezenet import SqueezeNet
+
     # s3_client = boto3.client('s3')
 
 except Exception as e:
     msg = traceback.format_exc()
-
-
 
 tmp = "/tmp/"
 cold = True
@@ -36,7 +37,7 @@ def main(args):
     global cold
     was_cold = cold
     cold = False
-
+    # return {"body": { "latency":-1, "msg":msg, "cold":was_cold }}
     try:
         input_bucket = args.get("input_bucket", 1)
         object_key = args.get("object_key", 1)
