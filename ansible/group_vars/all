@@ -216,6 +216,7 @@ invoker:
   # Specify if it should use docker-runc or docker to pause/unpause containers
   useRunc: "{{ invoker_use_runc | default(true) }}"
   idleContainer: "{{ invoker_idle_container | default('10 minutes') }}"
+  pauseGrace: "{{ invoker_pause_grace | default('40 miliseconds') }}"
   docker:
     become: "{{ invoker_docker_become | default(false) }}"
     runcdir: "{{ invoker_runcdir | default('/run/docker/runtime-runc/moby') }}"
