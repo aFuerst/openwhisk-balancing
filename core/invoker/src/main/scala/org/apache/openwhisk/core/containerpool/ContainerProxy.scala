@@ -276,7 +276,7 @@ class ContainerProxy(factory: (TransactionId,
   var healthPingActor: Option[ActorRef] = None //setup after prewarm starts
   val tcp: ActorRef = testTcp.getOrElse(IO(Tcp)) //allows to testing interaction with Tcp extension
 
-  logging.info(this, s"Unused container timeout: ${unusedTimeout}")
+  logging.info(this, s"Unused container timeout: ${unusedTimeout}; pause grace: ${pauseGrace}")
 
   startWith(Uninitialized, NoData())
 
