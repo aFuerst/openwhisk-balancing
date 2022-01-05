@@ -28,7 +28,7 @@ fi
 debug="debug-$VMID.log"
 net="mynet$VMID"
 
-CPUS=4
+CPUS=16
 if [ $VMID == 0 ]
 then
 CPUS=12

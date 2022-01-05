@@ -32,17 +32,17 @@ qemu-system-x86_64 \
     -drive file="$drive",if=virtio,aio=threads,format=raw \
     -debugcon file:debug.log -global isa-debugcon.iobase=0x402
 
-sleep 10
+# sleep 10
 
-pw='OwUser'
+# pw='OwUser'
 
-sshpass -p $pw ssh "ow@$IP" "docker rmi alfuerst/controller:latest"
-sshpass -p $pw ssh "ow@$IP" "docker rmi alfuerst/invoker:latest"
+# sshpass -p $pw ssh "ow@$IP" "docker rmi alfuerst/controller:latest"
+# sshpass -p $pw ssh "ow@$IP" "docker rmi alfuerst/invoker:latest"
 
-sshpass -p $pw ssh "ow@$IP" "docker pull alfuerst/controller:latest"
-sshpass -p $pw ssh "ow@$IP" "docker pull alfuerst/invoker:latest"
+# sshpass -p $pw ssh "ow@$IP" "docker pull alfuerst/controller:latest"
+# sshpass -p $pw ssh "ow@$IP" "docker pull alfuerst/invoker:latest"
 
-sshpass -p $pw ssh "ow@$IP" "cd /home/ow/openwhisk-caching; git pull"
+# sshpass -p $pw ssh "ow@$IP" "cd /home/ow/openwhisk-caching; git pull"
 
 # kill VM
 # echo 'q' | nc 127.0.0.1 45680

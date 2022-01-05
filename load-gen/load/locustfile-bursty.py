@@ -25,7 +25,7 @@ class Action:
 set_properties(host=host, auth=auth)
 normal_action_dict = {}
 bursty_action_dict = {}
-frequencies = [1, 5, 16, 40]
+frequencies = class_frequencies
 top_freqs = frequencies[-2:]
 top_action_names = []
 
