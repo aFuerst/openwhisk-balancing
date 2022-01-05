@@ -19,6 +19,7 @@ warm_times = [0.055, 1.939, 1.184, 0.044, 0.352,
 cold_times = [2.740, 7.725, 2.824, 2.896, 2.715, 2.251, 9.468, 2.868, 11.934, 3.000, 35.300, 2.502]
 max_wait = 10*60
 
+class_frequencies = [1, 1.1, 1.3, 1.8, 2, 2.5, 5, 8, 12, 16, 40]
 
 def set_properties(host=None, auth=None):
     if host == None:

@@ -25,25 +25,20 @@ class Action:
 set_properties(host=host, auth=auth)
 normal_action_dict = {}
 bursty_action_dict = {}
+frequencies = [1, 5, 16, 40]
+top_freqs = frequencies[-2:]
+top_action_names = []
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
   path = os.path.join("../ow-actions", zip_file)
-  for freq in [1, 5, 16, 40]:
+  for freq in frequencies:
     name = action_name + "_" + str(freq)
     url = add_web_action(name, path, container, memory=memory, host=host)
     normal_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
-
-for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
-  path = os.path.join("../ow-actions", zip_file)
-  for freq in [1, 5, 16, 40]:
-    if (action_name == "aes" or action_name == "gzip") and freq == 40:
-      freq = 160
-    name = action_name + "_" + str(freq)
-    url = add_web_action(name, path, container, memory=memory, host=host)
-    bursty_action_dict[name] = Action(name, url, warm_time, cold_time, freq)
+    if freq in top_freqs:
+      top_action_names.append(name)
 
 acts, normal_freqs = little._toWeightedData(normal_action_dict)
-_, bursty_freqs = little._toWeightedData(bursty_action_dict)
 max_wait = 10*60
 
 class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
@@ -56,12 +51,12 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
 
   @task
   def invoke(self):
-    if self.user.environment.shape_class.bursty:
-      print("bursty")
-      action = random.choices(population=acts, weights=bursty_freqs, k=1)[0]
-    else:
-      print("not bursty")
-      action = random.choices(population=acts, weights=normal_freqs, k=1)[0]
+    # if self.user.environment.shape_class.bursty:
+    #   print("bursty")
+    action = random.choices(population=self.user.environment.shape_class.acts, weights=self.user.environment.shape_class.weights, k=1)[0]
+    # else:
+    #   print("not bursty")
+    #   action = random.choices(population=acts, weights=normal_freqs, k=1)[0]
     t = time()
     invoke_name = action.name + "-" + str(t)
     self.tm.start_transaction(invoke_name)
@@ -122,6 +117,19 @@ class BurstyShape(LoadTestShape):
   bursty = False
   length = 60*30
   last_t = 0
+  actions = acts
+  weights = normal_freqs
+
+  def new_burst(self):
+    bursty_action_dict = {}
+    for key, action in actions.items():
+      if key in top_action_names:
+        bursty_action_dict[key] = Action(action.name, action.url, action.warmtime, action.coldtime, action.freq_class*2)
+      else:
+        bursty_action_dict[key] = action
+
+    _, new_frequencies = little._toWeightedData(bursty_action_dict)
+    weights = new_frequencies
 
   def tick(self):
     run_time = round(self.get_run_time())

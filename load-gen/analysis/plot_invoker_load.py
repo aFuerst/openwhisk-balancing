@@ -64,7 +64,7 @@ def plot(path, metric):
     df.index = df.index - (df.index[0] - time_min)
     xs = date_idx_to_min(df.index)
     if metric == "loadAvg":
-      df[metric] = df[metric] / 4
+      df[metric] = df[metric] / 16
     ax.plot(xs, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
     # limit = max(limit, df.index[-1])
     # time_min = min(time_min, df.index[0])
@@ -90,8 +90,8 @@ def plot(path, metric):
   mean_df["var"] = mean_df[invoker_cols].var(axis=1)
 
   ax.plot(times, mean_df["mean"], label="Mean", color='k')
-  if metric != "vm_cpu":
-    ax.plot(times, mean_df["var"], color='k', linestyle='dashed', label='Variance')
+  # if metric != "vm_cpu":
+  #   ax.plot(times, mean_df["var"], color='k', linestyle='dashed', label='Variance')
 
   # ax.plot(times, mean_df["mean"]+mean_df["std"], label="mean std", color='k', linestyle='dashed')
   # ax.plot(times, mean_df["mean"]-mean_df["std"], color='k', linestyle='dashed')
