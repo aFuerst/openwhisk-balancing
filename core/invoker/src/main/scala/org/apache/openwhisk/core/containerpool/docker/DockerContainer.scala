@@ -39,17 +39,49 @@ import spray.json._
 import org.apache.openwhisk.core.containerpool.logging.LogLine
 import org.apache.openwhisk.core.entity.ExecManifest.ImageName
 import org.apache.openwhisk.http.Messages
+import java.util.concurrent.Semaphore
 
 import java.net.ServerSocket
 
 object DockerContainer {
 
   private val byteStringSentinel = ByteString(Container.ACTIVATION_LOG_SENTINEL)
+  private val sync = new Semaphore(1)
+  private val portStart : Int = 20000
+  private val portMax : Int = 65535
+  private var nextPort : Int = portStart
+
+  private def nextNum() : Int = {
+    sync.acquire()
+
+    nextPort += 1
+    if (nextPort > portMax) {
+      nextPort = portStart
+    }
+    var ret = nextPort
+
+    sync.release()
+    return ret
+  }
 
   private def freePort(): Int = {
-    val socket = new ServerSocket(0)
-    try socket.getLocalPort
-    finally if (socket != null) socket.close()
+    while(true) {
+      var socket : ServerSocket = null
+      try {
+        val port = nextNum()
+        socket = new ServerSocket(port)
+        socket.close()
+        return port
+      }
+      catch {
+        case ioe : java.io.IOException => {
+          if (socket != null) {
+            socket.close()
+          }
+        }
+      }
+    }
+    return -1
   }
 
   /**
