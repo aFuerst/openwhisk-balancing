@@ -53,7 +53,7 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
   def invoke(self):
     # if self.user.environment.shape_class.bursty:
     #   print("bursty")
-    action = random.choices(population=self.user.environment.shape_class.acts, weights=self.user.environment.shape_class.weights, k=1)[0]
+    action = random.choices(population=self.user.environment.shape_class.actions, weights=self.user.environment.shape_class.weights, k=1)[0]
     # else:
     #   print("not bursty")
     #   action = random.choices(population=acts, weights=normal_freqs, k=1)[0]
@@ -122,25 +122,29 @@ class BurstyShape(LoadTestShape):
 
   def new_burst(self):
     bursty_action_dict = {}
-    for key, action in actions.items():
-      if key in top_action_names:
-        bursty_action_dict[key] = Action(action.name, action.url, action.warmtime, action.coldtime, action.freq_class*2)
+    new_bursty = random.choices(population=top_action_names, k=2)
+    for key, action in normal_action_dict.items():
+      if key in new_bursty:
+        bursty_action_dict[key] = Action(action.name, action.url, action.warmtime, action.coldtime, 100)
       else:
         bursty_action_dict[key] = action
 
     _, new_frequencies = little._toWeightedData(bursty_action_dict)
-    weights = new_frequencies
+    self.weights = new_frequencies
+    return new_bursty
 
   def tick(self):
     run_time = round(self.get_run_time())
 
-    if run_time % 10 == 0 and run_time != self.last_t:
-      if self.bursty:
-        print("{} going normal------------------------------------------------------------------------------------------------------------------".format(run_time))
-        self.bursty = False
-      else:
-        print("{} going bursty------------------------------------------------------------------------------------------------------------------".format(run_time))
-        self.bursty = True
+    if run_time % 30 == 0 and run_time != self.last_t:
+      # if self.bursty:
+      #   print("{} going normal------------------------------------------------------------------------------------------------------------------".format(run_time))
+      #   self.bursty = False
+      # else:
+      #   print("{} going bursty------------------------------------------------------------------------------------------------------------------".format(run_time))
+      #   self.bursty = True
+      new_bursty = self.new_burst()
+      print("{} new burst {}------------------------------------------------------------------------------------------------------------------".format(run_time, new_bursty))
     if run_time > self.length:
       return None
     return (users, self.spawn_rate)

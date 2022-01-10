@@ -26,7 +26,7 @@ ENVIRONMENT="host-distrib"
 whisk_logs_dir=/home/ow/openwhisk-logs
 redisPass='OpenWhisk'
 redisPort=6379
-ansible=/home/ow/openwhisk-caching/ansible
+ansible=/home/ow/openwhisk-balancing/ansible
 
 BASEPATH="/extra/alfuerst/20min-scaling-20sec/$ITERATION/"
 

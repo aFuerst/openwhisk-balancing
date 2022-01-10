@@ -83,7 +83,7 @@ def plot(path, metric):
 
   times = date_idx_to_min(mean_df.index)
   if "mem" in metric.lower():
-    ax.hlines(10*1024, times[0], times[-1], color='red')
+    ax.hlines(32*1024, times[0], times[-1], color='red')
   mean_df["present"] = mean_df[invoker_cols].notnull().sum(axis=1)
   mean_df["mean"] = mean_df[invoker_cols].sum(axis=1) / mean_df["present"]
   mean_df["std"] = mean_df[invoker_cols].std(axis=1)

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-$cmd="cd /home/ow/openwhisk-caching/ansible;
+$cmd="cd /home/ow/openwhisk-balancing/ansible;
 ENVIRONMENT='host-distrib';
 redisPass='OpenWhisk';
 redisPort=6379;
@@ -41,5 +41,5 @@ pw='OwUser'
 IP=172.29.200.161
 sshpass -p $pw ssh "ow@$IP" $cmd
 
-AUTH=$(sshpass -p $pw ssh ow@$IP "/home/ow/openwhisk-caching/tools/admin/wskadmin user create afuerst")
+AUTH=$(sshpass -p $pw ssh ow@$IP "/home/ow/openwhisk-balancing/tools/admin/wskadmin user create afuerst")
 echo $AUTH

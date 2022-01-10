@@ -42,7 +42,7 @@ qemu-system-x86_64 \
 # sshpass -p $pw ssh "ow@$IP" "docker pull alfuerst/controller:latest"
 # sshpass -p $pw ssh "ow@$IP" "docker pull alfuerst/invoker:latest"
 
-# sshpass -p $pw ssh "ow@$IP" "cd /home/ow/openwhisk-caching; git pull"
+# sshpass -p $pw ssh "ow@$IP" "cd /home/ow/openwhisk-balancing; git pull"
 
 # kill VM
 # echo 'q' | nc 127.0.0.1 45680

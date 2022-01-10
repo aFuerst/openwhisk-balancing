@@ -38,7 +38,7 @@ def plot(paths, users):
     if not str(users) + "-" in pth:
       continue
     df = pd.read_csv(file)
-
+    print(file)
     warm = len(df[df["cold"] == False])
     cold = len(df[df["cold"] == True])
 
@@ -54,7 +54,7 @@ def plot(paths, users):
   if args.ceil:
     labels = [x for x in sorted(warm_dict.keys())]
   else:
-    map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU'}
+    map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU', 'GreedyBalancer':'Greedy'}
     labels = [map_labs[x] for x in sorted(warm_dict.keys())]
   # print(labels)
   colds = []
@@ -71,9 +71,9 @@ def plot(paths, users):
   ax.bar(labels, warms, bottom=colds, label="Warm", yerr=warms_std)
   
   if args.ceil:
-    save_fname = os.path.join("{}-invokes-ceil.pdf".format(args.users))
+    save_fname = os.path.join("{}-throughputs-ceil.pdf".format(args.users))
   else:
-    save_fname = os.path.join("{}-invokes.pdf".format(args.users))
+    save_fname = os.path.join("{}-throughputs.pdf".format(args.users))
 
   ax.set_ylabel("Invocations")
   ax.set_ylabel("LoadBalancing Policy")

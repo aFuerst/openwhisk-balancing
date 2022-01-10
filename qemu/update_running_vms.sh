@@ -38,6 +38,6 @@ git pull"
     # sshpass -p $pw ssh "ow@$IP" -q "docker pull alfuerst/controller:latest"
     # sshpass -p $pw ssh "ow@$IP" -q "docker pull alfuerst/invoker:latest"
 
-    # sshpass -p $pw ssh "ow@$IP" -q "cd /home/ow/openwhisk-caching; git pull"
+    # sshpass -p $pw ssh "ow@$IP" -q "cd /home/ow/openwhisk-balancing; git pull"
   fi
 done

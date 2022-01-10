@@ -80,7 +80,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 BALANCER="org.apache.openwhisk.core.loadBalancer.$BALANCER"
-ansible=/home/ow/openwhisk-caching/ansible
+ansible=/home/ow/openwhisk-balancing/ansible
 
 # props="cd $ansible; echo $ENVIRONMENT; export OPENWHISK_TMP_DIR=$whisk_logs_dir; ansible-playbook -i environments/$ENVIRONMENT properties.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=6 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=1.2"
 # sshpass -p $pw ssh $HOST "$props"

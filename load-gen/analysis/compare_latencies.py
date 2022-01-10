@@ -21,8 +21,14 @@ out=[]
 warm_times = [0.3525, 3.035, 1.344, 0.2484, 0.8558, 0.3944, 6.7276, 0.2661, 9.1485, 0.7716, 6.1336, 0.4874]
 min_warm_times = [0.05505, 1.6623, 0.24349, 0.044388, 0.33531, 0.03527, 6.44305, 0.03420, 8.06751, 0.60664, 6.06870, 0.10007]
 actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
-path = os.path.join(args.path[0], "parsed_successes.csv")
-tmp = pd.read_csv(path)
+tmp = None
+for i in range(len(args.path)):
+  path = os.path.join(args.path[0], "parsed_successes.csv")
+  if os.path.exists(path):
+    tmp = pd.read_csv(path)
+    break
+if tmp is None:
+  exit(0)
 func_names = tmp["function"].unique()
 for warm_time, k in zip(min_warm_times, actions):
   for name in func_names:
@@ -57,7 +63,7 @@ def plot(paths, users, warm):
       df = df[df["cold"] == False]
 
     grouped = df.groupby(by="function")
-    for name, group in sorted(grouped, key=lambda p: int(p[0].split("_")[-1])):
+    for name, group in sorted(grouped, key=lambda p: float(p[0].split("_")[-1])):
       mean_sums[name] += group["latency"].mean()
     df_dict[path_to_key(pth)].append(df)
 
