@@ -1,0 +1,35 @@
+; the first parameter in a host is the inventory_hostname
+
+172.29.200.166 ansible_connection=ssh ansible_user=ow
+ansible ansible_connection=local
+
+[edge]
+172.29.200.161          ansible_host=172.29.200.161 ansible_connection=ssh
+
+[controllers]
+controller0         ansible_host=172.29.200.161 ansible_connection=ssh
+;
+[kafkas]
+kafka0              ansible_host=172.29.200.161 ansible_connection=ssh
+
+[zookeepers:children]
+kafkas
+
+[invokers]
+invoker0            ansible_host=172.29.200.166 ansible_connection=ssh
+
+; db group is only used if db.provider is CouchDB
+[db]
+172.17.0.1          ansible_host=172.29.200.161 ansible_connection=ssh
+
+[elasticsearch:children]
+db
+
+[redis]
+172.29.200.161          ansible_host=172.29.200.161 ansible_connection=ssh
+
+[apigateway]
+172.29.200.161          ansible_host=172.29.200.161 ansible_connection=ssh
+
+[etcd]
+etcd0            ansible_host=172.29.200.161 ansible_connection=ssh

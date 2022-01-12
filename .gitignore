@@ -21,6 +21,7 @@ results
 !/ansible/environments/bal-distrib
 !/ansible/environments/local-distrib
 !/ansible/environments/host-distrib
+!/ansible/environments/onevm-distrib
 !/ansible/environments/max-distrib
 !/ansible/environments/dual-controller-distrib
 
