@@ -11,6 +11,7 @@ def main(args):
     global cold
     was_cold = cold
     cold = False
+    glob_start = time()    
     try:
         file_size = args.get("file_size", 5)
         file_write_path = '/tmp/file'
@@ -27,7 +28,7 @@ def main(args):
             compress_latency = time() - start
 
         print(compress_latency)
-
-        return {"body": {'disk_write': disk_latency, "compress": compress_latency, "cold":was_cold}}
+        glob_end = time()
+        return {"body": {'disk_write': disk_latency, "compress": glob_end-glob_start, "cold":was_cold, "start":glob_start, "end":glob_end}}
     except Exception as e:
         return {"body": { "cust_error":traceback.format_exc(), "cold":was_cold }}

@@ -9,6 +9,7 @@ mpl.rcParams['ps.fonttype'] = 42
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import pickle
 
 path = "/home/alfuerst/repos/openwhisk-balancing/load-gen/load/testlocust/sharding-100-users/"
 if len(sys.argv) > 1:
@@ -17,6 +18,27 @@ if len(sys.argv) > 1:
 users = 100
 if len(sys.argv) > 2:
   users = int(sys.argv[2])
+
+warm_results = None
+with open("../load/warmdata_16.pckl", "r+b") as f:
+  warm_results = pickle.load(f)
+
+min_warm_times = {}
+for k in warm_results.keys():
+  min_warm_times[k] = min(warm_results[k])
+
+csv_path = os.path.join(path, "parsed_successes.csv")
+tmp = pd.read_csv(csv_path)
+out = []
+func_names = tmp["function"].unique()
+for k, warm_time in min_warm_times.items():
+  for name in func_names:
+    if k in name:
+      out.append((name,warm_time))
+warm_times = pd.DataFrame(out,columns=['function',"warm"])
+warm_times.index = warm_times['function']
+
+# print(warm_times[warm_times['function'] == 'aes_1'])
 
 def map_load(path, metric="loadAvg"):
   time_min = datetime(2050, 1, 1, tzinfo=None)
@@ -43,6 +65,9 @@ def map_load(path, metric="loadAvg"):
             if ':' in pair and "priorities" not in pair:
               key, val = pair.split(":")
               key = key.strip("\"")
+              val = float(val)
+              if metric == "loadAvg" and key == "loadAvg":
+                val /= 16
               pack[key] = float(val)
 
           pack["vm_cpu"] = pack["us"] + pack["sy"]
@@ -146,71 +171,84 @@ def map_load(path, metric="loadAvg"):
   df.to_csv(save_pth, index=False)
   return df
 
-def plot_relationship(load_df, plotCold=False, both=False, addtl=""):
+
+def plotPerFunc(load_df, metric):
   successes_file = os.path.join(path, "parsed_successes.csv")
   df = pd.read_csv(successes_file, encoding='utf-8', low_memory=False)
   df["start_time"] = pd.to_datetime(df["start_time"])
   df["start_time"] = df["start_time"].dt.round("1s")
-
-  # df["activation_id"] = df["activation_id"].astype(str)
-  # load_df["activation_id"] = load_df["activation_id"].astype(str)
-  # print(load_df["activation_id"].dtype)
-
-  # print(df.dtypes)
-  # print(load_df.dtypes)
-
-  # df = df.join(load_df, on=["activation_id"], how='left', rsuffix="r_")
   df = df.merge(load_df, on=["activation_id"], how='left')
-  # print(df)
 
-  xs = []
-  ys = []
-  points = []
+  points = defaultdict(list)
   grouped = df.groupby(by="function")
   for name, group in grouped:
-    if not both:
-      group = group[group["cold"] == plotCold]
-    warmNormed = group["latency"] / group["latency"].mean()
+    func, *_ = name.split("_")
+    group = group[group["cold"] == False]
+    warmNormed = group["latency"] / float(warm_times[warm_times['function'] == name]['warm'])
     # print(len(warmNormed), len(df.iloc[warmNormed.index]["load"]))
     load = df.iloc[warmNormed.index]["load"]
-    # load["normed"] = warmNormed 
+    # load["normed"] = warmNormed
     # joined = warmNormed.join(df.iloc[warmNormed.index]["load"])
+    # print(warmNormed)
+    # print(df)
+    # print(df.iloc[warmNormed.index])
     for i in range(len(warmNormed)):
       # print(load.iloc[i], warmNormed.iloc[i])
-      points.append((load.iloc[i], warmNormed.iloc[i]))
-      xs.append(warmNormed.iloc[i])
-      ys.append(load.iloc[i])
+      points[func].append((warmNormed.iloc[i], load.iloc[i]))
+      # xs.append(warmNormed.iloc[i])
+      # ys.append(load.iloc[i])
+    # break
+  for func in points.keys():
+    points[func] = sorted(points[func], key=lambda pt: pt[0])
+    # print(points[freq][func])
+    # break
+  try:
+    os.mkdir(os.path.join(path, "latencies"))
+  except:
+    pass
+
+  colors = ['black', 'silver', 'maroon', 'orange', 'darkgreen',
+            'lime', 'navy', 'magenta', 'indigo', 'crimson', 'steelblue', 'pink', 'red']
+  for i, func in enumerate(sorted(points)):
+    fig, ax = plt.subplots()
+    plt.tight_layout()
+    fig.set_size_inches(5, 3)
+
+    xs = [load for norm, load in points[func]]
+    ys = [norm for norm, load in points[func]]
+    # ax.plot(xs, ys, 'o', label=func)
+    if len(xs) < 2:
+      # print(func, freq)
+      continue
+
+
+    b, a = np.polyfit(xs, ys, deg=1)
+
+    # Create sequence of 100 numbers from 0 to 100
+    xseq = np.linspace(min(xs), max(xs), num=100)
+
+    # Plot regression line
+    # print(i, func, len(colors))
+    ax.plot(xseq, a + b * xseq, label=func, color=colors[i])
+    ax.scatter(xs, ys, label=func, color=colors[i])
+    # ax.scatter([1,2,3], [8,9,0], label="AAGG", color=colors[i])
+
     # break
 
-  points = sorted(points, key=lambda x: x[0])
+    ax.set_ylabel("Normalized latency")
+    ax.set_xlabel("Invoker {}".format(metric))
+    ax.legend()
+    save_fname = os.path.join(
+        path, "latencies", "{}-{}-{}.png".format("latency_to_load", metric, func))
+    # print(func, len(xs), save_fname, len(xseq))
 
-  xs = [norm for load,norm in points]
-  ys = [load for load,norm in points]
-  # print(len(points), len(df))
+    plt.savefig(save_fname, bbox_inches="tight")
+    plt.close(fig)
+    # print(xs)
+    # print(ys)
+    # break
 
-  fig, ax = plt.subplots()
-  plt.tight_layout()
-  fig.set_size_inches(5,3)
-  label="both"
-  if not both:
-    if plotCold:
-      label="cold"
-    else:
-      label="warm"
-  ax.plot(xs, ys, 'o', label=label)
-
-  b, a = np.polyfit(xs, ys, deg=1)
-  xseq = np.linspace(min(xs), max(xs), num=100)
-  ax.plot(xseq, a + b * xseq, label="Polyfit")
-
-  ax.set_ylabel("Invoker {}".format(metric))
-  ax.set_xlabel("Normalized latency")
-  ax.legend()
-  save_fname = os.path.join(path, "{}-{}{}.png".format("latency_to_load", label, addtl))
-  plt.savefig(save_fname, bbox_inches="tight")
-  plt.close(fig)
-
-def plotPerFunc(load_df, metric):
+def plot(load_df, metric):
   successes_file = os.path.join(path, "parsed_successes.csv")
   df = pd.read_csv(successes_file, encoding='utf-8', low_memory=False)
   df["start_time"] = pd.to_datetime(df["start_time"])
@@ -223,7 +261,8 @@ def plotPerFunc(load_df, metric):
     *func, freq = name.split("_")
     func = "_".join(func)
     group = group[group["cold"] == False]
-    warmNormed = group["latency"] / group["latency"].mean()
+
+    warmNormed = group["latency"] / float(warm_times[warm_times['function'] == name]['warm'])
     # print(len(warmNormed), len(df.iloc[warmNormed.index]["load"]))
     load = df.iloc[warmNormed.index]["load"]
     # load["normed"] = warmNormed 
@@ -245,47 +284,38 @@ def plotPerFunc(load_df, metric):
     os.mkdir(os.path.join(path, "latencies"))
   except:
     pass
+
   colors = ['black', 'silver', 'maroon', 'orange', 'darkgreen', 'lime', 'navy', 'magenta', 'indigo', 'crimson', 'steelblue', 'pink']
   fig, ax = plt.subplots()
   plt.tight_layout()
   fig.set_size_inches(5,3)
   for i, func in enumerate(sorted(points)):
-    xs = [norm for norm,load in points[func]]
-    ys = [load for norm,load in points[func]]
-    # ax.plot(xs, ys, 'o', label=func)
+    xs = [load for norm,load in points[func]]
+    ys = [norm for norm,load in points[func]]
     if len(xs) < 2:
-      # print(func, freq)
       continue
 
-
     b, a = np.polyfit(xs, ys, deg=1)
-
     # Create sequence of 100 numbers from 0 to 100
     xseq = np.linspace(min(xs), max(xs), num=100)
-
     # Plot regression line
-    ax.plot(xseq, a + b * xseq, label=func, color=colors[i])  
-    # break
+    ax.plot(xseq, a + b * xseq, label=func, color=colors[i])
 
-  ax.set_ylabel("Invoker {}".format(metric))
-  ax.set_xlabel("Normalized latency")
+  ax.set_xlabel("Invoker {}".format(metric))
+  ax.set_ylabel("Normalized latency")
   ax.legend()
-  save_fname = os.path.join(path, "latencies", "{}-{}.png".format("latency_to_load", metric))
+  save_fname = os.path.join(
+      path, "latencies", "{}-{}.png".format("latency_to_load", metric))
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 
 metric="loadAvg"
 load_df = map_load(path, metric=metric)
-# metric = "-loadAvg"
-plot_relationship(load_df, plotCold=False, addtl=metric)
-plot_relationship(load_df, plotCold=True, addtl=metric)
-plot_relationship(load_df, both=True, addtl=metric)
+# print(load_df["load"].isna())
 plotPerFunc(load_df, metric=metric)
+plot(load_df, metric=metric)
 
 metric="vm_cpu"
 load_df = map_load(path, metric=metric)
-# metric="-vm_cpu"
-plot_relationship(load_df, plotCold=False, addtl=metric)
-plot_relationship(load_df, plotCold=True, addtl=metric)
-plot_relationship(load_df, both=True, addtl=metric)
 plotPerFunc(load_df, metric=metric)
+plot(load_df, metric=metric)

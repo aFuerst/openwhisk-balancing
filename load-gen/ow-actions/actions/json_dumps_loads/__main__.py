@@ -15,24 +15,25 @@ cold = True
 
 def main(args):
     # return {"body":"testing\n\n"}
+    glob_start = time()
     global cold
     was_cold = cold
     cold = False
     try:
         link = random.choice(urls)
 
-        start = time()
         f = urlopen(link)
         data = f.read().decode("utf-8")
-        network = time() - start
+        network = time() - glob_start
 
         start = time()
         json_data = json.loads(data)
         str_json = json.dumps(json_data, indent=4)
-        latency = time() - start
+        end = time()
+        latency = end - start
 
         # print(str_json)
-        return {"body": {"network": network, "serialization": latency, "cold":was_cold}}
+        return {"body": {"network": network, "serialization": latency, "cold":was_cold, "start":glob_start, "end":end}}
 
     except Exception as e:
         return {"body": { "cust_error":traceback.format_exc(), "cold":was_cold, "link":link }}

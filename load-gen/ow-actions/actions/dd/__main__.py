@@ -36,13 +36,16 @@ def main(args):
       out_fd = open(tmp + 'io_write_logs', 'w')
       dd = subprocess.Popen(['/bin/dd', 'if=/dev/zero', 'of=/tmp/out', bs_cmd, count_cmd], stderr=out_fd, stdout=out_fd)
       dd.communicate()
-      latency = time() - start
       subprocess.check_output(['/bin/ls', '-alh', tmp])
+
+      end = time()
+      latency = end - start
 
       total_bytes = (bs * 1024) * count
       tput = "{0} bytes ({1} MBs), {2} s, {3} MB/s".format(total_bytes, total_bytes/(1024*1024), latency, total_bytes / (1024*1024) / latency)
+
       with open(tmp + 'io_write_logs') as logs:
          result = logs.readlines() #str(logs.readlines()[2]).replace('\n', '')
-         return {"body": { "result":tput, "latency":latency, "cold":was_cold }}
+         return {"body": { "result":tput, "latency":latency, "cold":was_cold, "start":start, "end":end }}
    except Exception as e:
       return {"body": { "cust_error":traceback.format_exc(), "cold":was_cold }}

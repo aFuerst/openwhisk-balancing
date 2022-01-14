@@ -54,7 +54,9 @@ def plot(paths, users):
   if args.ceil:
     labels = [x for x in sorted(warm_dict.keys())]
   else:
-    map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU', 'GreedyBalancer':'Greedy'}
+    map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR',
+          'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU', 'GreedyBalancer':'Greedy',
+            "EnhancedShardingContainerPoolBalancer":"Enhance"}
     labels = [map_labs[x] for x in sorted(warm_dict.keys())]
   # print(labels)
   colds = []

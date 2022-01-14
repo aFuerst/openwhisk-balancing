@@ -8,8 +8,9 @@ def float_operations(n):
         sin_i = math.sin(i)
         cos_i = math.cos(i)
         sqrt_i = math.sqrt(i)
-    latency = time() - start
-    return latency
+    end = time()
+    latency = end - start
+    return latency, start, end
 
 cold = True
 
@@ -19,6 +20,6 @@ def main(args):
     cold = False
 
     n = int(args.get("n", 20))
-    result = float_operations(n)
+    result, start, end = float_operations(n)
     print(result)
-    return {"body": { "result" : result, "cold":was_cold }}
+    return {"body": { "result" : result, "cold":was_cold, "start":start, "end":end }}

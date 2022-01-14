@@ -7,18 +7,17 @@ timeout 120 sshpass -p $1 ssh $2 "docker rm -f \$(docker ps -aq)" &> /dev/null
 export HOST=https://172.29.200.161:10001
 export AUTH=fd7a1d63-0944-45c6-9578-15bc7048031e:UXx4vs0BXnDrlnJiBTHp0fn9kMtyWTWQJBFLWdb62rSkixwkSE748RSkOT7ReoTp
 
-for USERS in {20..300..20}
-do
+export USER_TOT=150
 
-MEMORY="32G"
+MEMORY="45G"
 IMAGE="alfuerst"
 LOADSTRAT="LoadAvg"
 ALGO="RandomForward"
 OUTPTH="/out/path/name.csv"
-BALANCER="RoundRobinLB"
+BALANCER="ShardingContainerPoolBalancer"
 # RoundRobinLB
 EVICTION="GD"
-ENVIRONMENT="host-distrib"
+ENVIRONMENT="onevm-distrib"
 boundedceil="1.5"
 
 whisk_logs_dir=/home/ow/openwhisk-logs
@@ -27,19 +26,13 @@ redisPort=6379
 ansible=/home/ow/openwhisk-balancing/ansible
 
 r=5
-warmup=$(($USERS/$r))
+warmup=$(($USER_TOT/$r))
 echo "users: $USERS; warmup seconds: $warmup"
-BASEPATH="/extra/alfuerst/openwhisk-logs-two/"
-pth="$BASEPATH/findload/$USERS-users"
+BASEPATH="/extra/alfuerst/openwhisk-logs-two/onevm/"
+pth="$BASEPATH/$USER_TOT-users"
 mkdir -p $pth
 user='ow'
 pw='OwUser'
-
-if [ -f "$pth/controller0_logs.log" ]; then
-echo "skipping run $pth"
-python3 locust_parse.py "$pth/logs_transactions.csv"
-continue
-fi
 
 #####################################
 # ansible can get stuck trying to clear docker containers on invokers. do it manually with reboot if tineout occurs
@@ -92,11 +85,11 @@ cmd="cd $ansible; echo $ENVIRONMENT; export OPENWHISK_TMP_DIR=$whisk_logs_dir;
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean;
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e mode=clean;
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e redis_port=$redisPort -e redis_pass=$redisPass;
-ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=16 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=$boundedceil -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER -e controller_horizscale=false -e invoker_idle_container=60minutes -e invoker_container_network_name=host -e invoker_pause_grace=60minutes"
+ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=16 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=$boundedceil -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER -e controller_horizscale=false -e invoker_idle_container=60minutes -e invoker_container_network_name=host -e invoker_pause_grace=50milliseconds"
 ANSIBLE_HOST="$user@172.29.200.161"
 sshpass -p $pw ssh $ANSIBLE_HOST "$cmd" &> "$pth/logs.txt"
 
-locust --headless --users $USERS -r $r -f locustfile-transaction.py --csv "$pth/logs" --log-transactions-in-file --run-time 10m &>> "$pth/logs.txt"
+locust --headless -f locustfile-bespoke-load.py --csv "$pth/logs" --log-transactions-in-file &>> "$pth/logs.txt"
 python3 locust_parse.py "$pth/logs_transactions.csv"
 
 DEST=$pth
@@ -119,9 +112,3 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
   sshpass -p $pw scp "$user@$IP:$log_pth" $DEST
 
   done
-
-# python3 ../analysis/plot_invoker_load.py $pth $USERS
-# python3 ../analysis/plot_invocations.py $pth $USERS
-# python3 ../analysis/map_invocation_to_load.py $pth $USERS
-done
-# done

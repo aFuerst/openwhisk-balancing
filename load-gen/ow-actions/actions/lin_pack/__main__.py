@@ -2,6 +2,8 @@ from numpy import matrix, linalg, random
 from time import time
 
 def linpack(n):
+    start = time()
+
     # LINPACK benchmarks
     ops = (2.0 * n) * n * n / 3.0 + (2.0 * n) * n
 
@@ -14,9 +16,9 @@ def linpack(n):
     B = matrix(B.reshape((n, 1)))
 
     # Ax = B
-    start = time()
     x = linalg.solve(A, B)
-    latency = time() - start
+    end = time()
+    latency = end - start
 
     mflops = (ops * 1e-6 / latency)
 
@@ -25,7 +27,7 @@ def linpack(n):
         'latency':latency
     }
 
-    return result
+    return result, start, end
 
 cold = True
 
@@ -35,8 +37,8 @@ def main(args):
     cold = False
     try:
         n = int(args.get("n", 20))
-        result = linpack(n)
+        result, start, end = linpack(n)
         print(result)
-        return {"body": {"result":result, "cold":was_cold}}
+        return {"body": {"result":result, "cold":was_cold, "start":start, "end":end}}
     except Exception as e:
         return {"body": {"result":str(e), "cold":was_cold}}

@@ -35,40 +35,41 @@ def plot(path, metric):
   for i in range(8):
     file = os.path.join(path, "invoker{}_logs.log".format(i))
     file_data = []
-    with open(file) as f:
-      for line in f:
-        if "Updated data in Redis data" in line:
-          time, *_, data = line.split(" ")
+    if os.path.exists(file):
+      with open(file) as f:
+        for line in f:
+          if "Updated data in Redis data" in line:
+            time, *_, data = line.split(" ")
 
-          # {"containerActiveMem":0.0,"cpuLoad":-1.0,"loadAvg":0.5,"priorities":[["whisk.system/invokerHealthTestAction0",0.0,2650.0]],"running":0.0,"runningAndQ":0.0,"usedMem":128.0}
-          data = data.strip().strip('{}')
-          time = time.strip('[]')
+            # {"containerActiveMem":0.0,"cpuLoad":-1.0,"loadAvg":0.5,"priorities":[["whisk.system/invokerHealthTestAction0",0.0,2650.0]],"running":0.0,"runningAndQ":0.0,"usedMem":128.0}
+            data = data.strip().strip('{}')
+            time = time.strip('[]')
 
-          pack = {}
-          for pair in data.split(","):
-            if ':' in pair and "priorities" not in pair:
-              key, val = pair.split(":")
-              key = key.strip("\"")
-              pack[key] = float(val)
+            pack = {}
+            for pair in data.split(","):
+              if ':' in pair and "priorities" not in pair:
+                key, val = pair.split(":")
+                key = key.strip("\"")
+                pack[key] = float(val)
 
-          # [2021-10-28T13:43:28.907Z]
-          parsedtime = datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ")
-          pack["time"] = parsedtime
-          pack["vm_cpu"] = pack["us"] + pack["sy"]
+            # [2021-10-28T13:43:28.907Z]
+            parsedtime = datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ")
+            pack["time"] = parsedtime
+            pack["vm_cpu"] = pack["us"] + pack["sy"]
 
-          file_data.append(pack)
-          # break
-    df = pd.DataFrame.from_records(file_data, index="time")
-    df = df[df["usedMem"] > 128.0]
-    df = df.resample("S").mean().interpolate()
-    df.index = df.index - (df.index[0] - time_min)
-    xs = date_idx_to_min(df.index)
-    if metric == "loadAvg":
-      df[metric] = df[metric] / 16
-    ax.plot(xs, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
-    # limit = max(limit, df.index[-1])
-    # time_min = min(time_min, df.index[0])
-    # print(df) #.describe())
+            file_data.append(pack)
+            # break
+      df = pd.DataFrame.from_records(file_data, index="time")
+      df = df[df["usedMem"] > 128.0]
+      df = df.resample("S").mean().interpolate()
+      df.index = df.index - (df.index[0] - time_min)
+      xs = date_idx_to_min(df.index)
+      if metric == "loadAvg":
+        df[metric] = df[metric] / 16
+      ax.plot(xs, df[metric], label=str(i), color=colors[i]) #"Indexer: {}".format(i))
+      # limit = max(limit, df.index[-1])
+      # time_min = min(time_min, df.index[0])
+      # print(df) #.describe())
 
     # print(mean_df)
     new_col = "{}_{}".format(i, metric)

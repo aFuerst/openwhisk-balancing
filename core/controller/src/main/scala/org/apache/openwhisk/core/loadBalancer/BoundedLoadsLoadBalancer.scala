@@ -130,7 +130,7 @@ object BoundedLoadsLoadBalancer extends LoadBalancerProvider {
       // logging.info(this, s"Scheduling action '${fqn}' with TransactionId ${transId}")
 
     val strName = s"${fqn.namespace}/${fqn.name}"
-    val possNode = schedulingState._consistentHash.locate(strName)
+    val possNode = schedulingState._consistentHash.locate(fqn.asString)
     if (possNode.isPresent)
     {
       val loadCuttoff = schedulingState.getLoadCutoff(loadStrategy)

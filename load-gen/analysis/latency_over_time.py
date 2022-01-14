@@ -58,7 +58,7 @@ df["normed_lat"] = df.apply(get_normed_lat, axis=1)
 df["start_time"] = df["start_time"].dt.round("5s")
 
 groups = df.groupby(["start_time"])
-print(len(groups))
+# print(len(groups))
 # print(df["normed_lat"].describe())
 
 xs = []

@@ -165,7 +165,8 @@ def compare(numerator_str, denom_str, paths):
   # ax.set_yscale('log')
 
   map_labs = {'BoundedLoadsLoadBalancer': 'Bounded', 'RandomForwardLoadBalancer': 'Random Forward',
-            'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'Sharding', 'RandomLoadUpdateBalancer': 'RLU'}
+            'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'Sharding', 'RandomLoadUpdateBalancer': 'RLU',
+            "EnhancedShardingContainerPoolBalancer":"Enhance"}
 
   ax.set_title("{} / {}".format(map_labs[numerator_str], map_labs[denom_str]))
   save_fname = os.path.join("{}-compare-functions-{}-{}.pdf".format(users, numerator_str, denom_str))

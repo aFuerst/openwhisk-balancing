@@ -94,6 +94,7 @@ def image_processing(file_name, image_path):
 cold = True
 
 def main(args):
+    start = time()
     global cold
     was_cold = cold
     cold = False
@@ -114,6 +115,7 @@ def main(args):
         # for upload_path in path_list:
         #     s3_client.upload_file(upload_path, output_bucket, upload_path.split("/")[FILE_NAME_INDEX])
 
-        return {"body": { "latency":latency, "cold":was_cold }}
+        end = time()
+        return {"body": { "latency":latency, "cold":was_cold, "start":start, "end":end }}
     except Exception as e:
         return {"body": { "cust_error":traceback.format_exc(), "msg":msg, "cold":was_cold }}

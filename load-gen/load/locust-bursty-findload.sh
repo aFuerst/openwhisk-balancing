@@ -1,25 +1,30 @@
 #!/bin/bash
 
-export HOST=https://172.29.200.161:10001
-export AUTH=5973c02d-4c68-4b6d-af13-17f9e3e82028:ezIS6fF9BREmaMLGZrVDT7Y3SauPQdt7u1rNsDnHhUPweeC186J0OePoe1kabdh4
+ready_vm () {
+timeout 120 sshpass -p $1 ssh $2 "docker rm -f \$(docker ps -aq)" &> /dev/null
+}
 
-for ITERATION in {0..2}
+
+export HOST=https://172.29.200.161:10001
+export AUTH=fd7a1d63-0944-45c6-9578-15bc7048031e:UXx4vs0BXnDrlnJiBTHp0fn9kMtyWTWQJBFLWdb62rSkixwkSE748RSkOT7ReoTp
+
+for ITERATION in {0..3}
 do
 
-for USERS in 20 50 # 30 # 70
+for USERS in 120 80 # 50 20 # 50 # 30 70
 do
 
 export USER_TOT=$USERS
 
-for BALANCER in RoundRobinLB BoundedLoadsLoadBalancer ShardingContainerPoolBalancer RandomLoadUpdateBalancer GreedyBalancer # RandomForwardLoadBalancer
+for BALANCER in RoundRobinLB ShardingContainerPoolBalancer RandomLoadUpdateBalancer EnhancedShardingContainerPoolBalancer BoundedLoadsLoadBalancer # GreedyBalancer ConsistentHashBalancer # RandomForwardLoadBalancer
 do
 
-boundedceil="1.5"
+boundedceil="5"
 if [ "$BALANCER" = "BoundedLoadsLoadBalancer" ]; then
-boundedceil="1.2"
+boundedceil="2"
 fi
 
-MEMORY="10G"
+MEMORY="32G"
 IMAGE="alfuerst"
 LOADSTRAT="LoadAvg"
 ALGO="RandomForward"
@@ -36,17 +41,60 @@ BASEPATH="/extra/alfuerst/openwhisk-logs-two/bursty/$ITERATION/"
 
 r=5
 warmup=$(($USERS/$r))
-echo "$BALANCER; users: $USERS; warmup seconds: $warmup"
+echo "$BALANCER; users: $USERS; warmup seconds: $warmup; iteration $ITERATION"
 pth="$BASEPATH/$USERS-$BALANCER"
 mkdir -p $pth
 user='ow'
 pw='OwUser'
 
-if [ -f "$pth/controller0_logs.log" ]; then
-echo "skipping run $pth"
+if [ -f "$pth/logs_transactions.csv" ]; then
+python3 locust_parse.py "$pth/logs_transactions.csv"
 continue
 fi
 
+#####################################
+# ansible can get stuck trying to clear docker containers on invokers. do it manually with reboot if tineout occurs
+for VMID in {1..8}
+do
+INVOKERID=$(($VMID-1))
+# IP=$(($VMID+1))
+IP="172.29.200.$((161 + $VMID))"
+ready_vm $pw "$user@$IP" &
+
+done
+
+wait $(jobs -p)
+
+code="$?"
+if [ $code != "0" ]; then
+  echo "docker rm exit code: $code ; having to reboot VMs"
+
+  for VMID in {1..8}
+  do
+
+    # reboot VMs
+    tel="4568$VMID"
+    if [ $VMID -gt 9 ];
+    then
+    tel="456$VMID"
+    fi
+
+    SERVER=2
+    if [ $VMID -lt 3 ]; then
+    SERVER=0
+    elif [ $VMID -lt 6 ]; then
+    SERVER=1
+    fi
+
+    VM_HOST="v-02$SERVER"
+
+    echo 'system_reset' | nc $VM_HOST $tel  > /dev/null
+
+
+  done
+  sleep 30
+fi
+#####################################
 
 cmd="cd $ansible; echo $ENVIRONMENT; export OPENWHISK_TMP_DIR=$whisk_logs_dir; 
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean;

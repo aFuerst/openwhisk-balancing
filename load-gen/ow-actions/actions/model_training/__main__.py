@@ -53,16 +53,18 @@ def main(args):
 
         train = tfidf_vector.transform(df['train'])
 
-        model = LogisticRegression()
+        model = LogisticRegression(n_jobs=1)
         model.fit(train, df['Score'])
-        latency = time() - start
 
         model_file_path = tmp + model_object_key
         joblib.dump(model, model_file_path)
 
+        end = time()
+        latency = end - start
+
         # TODO: Upload
         # s3_client.upload_file(model_file_path, model_bucket, model_object_key)
 
-        return {"body": { "latency":latency, "cold":was_cold }}
+        return {"body": { "latency":latency, "cold":was_cold, "start":start, "end":end }}
     except Exception as e:
         return {"body": { "cust_error":traceback.format_exc(), "msg":msg, "cold":was_cold }}

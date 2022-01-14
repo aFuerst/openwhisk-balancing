@@ -42,8 +42,9 @@ def main(args):
       options = {'table': table}
 
       data = tmpl.render(options=options)
-      latency = time() - start
-      return {"body": {'latency': latency, 'data': data, "cold":was_cold}}
+      end = time()
+      latency = end - start
+      return {"body": {'latency': latency, 'data': data, "cold":was_cold, "start":start, "end":end}}
     except Exception as e:
       err = "whelp"
       try:

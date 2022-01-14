@@ -5,7 +5,7 @@ timeout 120 sshpass -p $1 ssh $2 "docker rm -f \$(docker ps -aq)" &> /dev/null
 }
 
 export HOST=https://172.29.200.161:10001
-export AUTH=5973c02d-4c68-4b6d-af13-17f9e3e82028:ezIS6fF9BREmaMLGZrVDT7Y3SauPQdt7u1rNsDnHhUPweeC186J0OePoe1kabdh4
+export AUTH=fd7a1d63-0944-45c6-9578-15bc7048031e:UXx4vs0BXnDrlnJiBTHp0fn9kMtyWTWQJBFLWdb62rSkixwkSE748RSkOT7ReoTp
 
 # ShardingContainerPoolBalancer RoundRobinLB BoundedLoadsLoadBalancer RandomLoadUpdateBalancer RandomForwardLoadBalancer GreedyBalancer
 

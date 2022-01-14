@@ -54,6 +54,7 @@ import sys.process._
 import java.time.Instant
 import java.util.concurrent.Semaphore
 import scala.concurrent.duration._
+import org.apache.openwhisk.core.entity.size.SizeLong
 
 /**
  * A loadbalancer that schedules workload based on 
@@ -214,6 +215,9 @@ class ConsistentCacheInvokerNode(_invoker: InvokerInstanceId, _load: Option[Atom
 case class RedisAwareLoadBalancerState(
   var _consistentHash: ConsistentHash[ConsistentCacheInvokerNode] = HashRing.newBuilder().build(),
   var _consistentHashList: List[ConsistentCacheInvokerNode] = List(),
+  private var _managedStepSizes: Seq[Int] = ShardingContainerPoolBalancer.pairwiseCoprimeNumbersUntil(0),
+  protected[loadBalancer] var _invokerSlots: IndexedSeq[NestedSemaphore[FullyQualifiedEntityName]] =
+    IndexedSeq.empty[NestedSemaphore[FullyQualifiedEntityName]],
 
   // private var startTimes: mutable.Map[ActivationId, Long] = mutable.Map.empty[ActivationId, Long],
   var runTimes: mutable.Map[String, (Double, Double)] = mutable.Map.empty[String, (Double, Double)], // (warm, cold)
@@ -241,6 +245,28 @@ case class RedisAwareLoadBalancerState(
 
   /** Getters for the variables, setting from the outside is only allowed through the update methods below */
   def invokers: IndexedSeq[InvokerHealth] = _invokers
+  def managedStepSizes: Seq[Int] = _managedStepSizes
+  def invokerSlots: IndexedSeq[NestedSemaphore[FullyQualifiedEntityName]] = _invokerSlots
+
+  /**
+   * @param memory
+   * @return calculated invoker slot
+   */
+  private def getInvokerSlot(memory: ByteSize): ByteSize = {
+    val invokerShardMemorySize = memory / _invokers.size
+    val newTreshold = if (invokerShardMemorySize < MemoryLimit.MIN_MEMORY) {
+      logging.error(
+        this,
+        s"registered controllers: calculated controller's invoker shard memory size falls below the min memory of one action. "
+          + s"Setting to min memory. Expect invoker overloads. Cluster size ${_invokers.size}, invoker user memory size ${memory.toMB.MB}, "
+          + s"min action memory size ${MemoryLimit.MIN_MEMORY.toMB.MB}, calculated shard size ${invokerShardMemorySize.toMB.MB}.")(
+        TransactionId.loadbalancer)
+      MemoryLimit.MIN_MEMORY
+    } else {
+      invokerShardMemorySize
+    }
+    newTreshold
+  }
 
   def ncPingInvokers() : Unit = {
     for (invoker <- _invokers) {
@@ -331,6 +357,11 @@ case class RedisAwareLoadBalancerState(
         case "SimpleLoad" => node.load.incrementAndGet()
         case _ => None
       }
+  }
+
+  def incrementLoad(invoker: InvokerInstanceId, amount: Double) : Unit = {
+    val ld = minuteLoadAvg.getOrElse(invoker, 0.0)
+    minuteLoadAvg += (invoker -> (ld + amount))
   }
 
   def getLoad(invoker: InvokerInstanceId, loadStrategy: String) : Double = {
@@ -467,6 +498,11 @@ case class RedisAwareLoadBalancerState(
     _consistentHash = newHash
     _consistentHashList = List() ++ _consistentHash.getNodes().iterator().asScala
     nodeMap = mutable.Map.empty[String, ConsistentCacheInvokerNode]
+    _managedStepSizes = ShardingContainerPoolBalancer.pairwiseCoprimeNumbersUntil(_invokers.size)
+    val onlyNewInvokers = _invokers.drop(_invokerSlots.length)
+    _invokerSlots = _invokerSlots ++ onlyNewInvokers.map { invoker =>
+      new NestedSemaphore[FullyQualifiedEntityName](getInvokerSlot(invoker.id.userMemory).toMB.toInt)
+    }
 
     logging.info(this,
       s"loadbalancer invoker status updated. num invokers = ${newSize}, length of _consistentHashList = ${_consistentHashList.size}, invokerCores = ${lbConfig.invoker.cores} c = ${lbConfig.invoker.c} boundedCeil = ${lbConfig.invoker.boundedCeil}")(
