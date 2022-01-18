@@ -221,6 +221,12 @@ class RLUShardingBalancer(
   override protected def customUpdate() : Unit = {
     RandomLoadUpdateBalancer.updatePopularity(schedulingState, lbConfig)
   }
+
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+    schedulingState.invokerSlots
+      .lift(invoker.toInt)
+      .foreach(_.releaseConcurrent(entry.fullyQualifiedEntityName, entry.maxConcurrent, entry.memoryLimit.toMB.toInt))
+  }
 }
 
 object RLUShardingBalancer extends LoadBalancerProvider {
@@ -390,7 +396,7 @@ object RLUShardingBalancer extends LoadBalancerProvider {
         Some(invoker.id, false)
       } else {
         // If we've gone through all invokers
-        if (stepsDone == numInvokers + 1) {
+        if (stepsDone >= lbConfig.maxChainLen) {
           val healthyInvokers = invokers.filter(_.status.isUsable)
           if (healthyInvokers.nonEmpty) {
             // Choose a healthy invoker randomly

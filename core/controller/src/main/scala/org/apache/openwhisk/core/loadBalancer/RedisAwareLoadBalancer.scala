@@ -512,10 +512,10 @@ case class RedisAwareLoadBalancerState(
   def stateReleaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry): Unit = {
     val found = _consistentHashList.find(node => node.invoker == invoker)
     found.map { invok =>
-      invok.load.decrementAndGet()
+      val ld = invok.load.decrementAndGet()
       logging.info(
         this,
-        s"Activation ${entry} released on invoker ${invoker}, current load: ${invok.load}")
+        s"Activation ${entry} released on invoker ${invoker}, current load: ${ld}")
     }.getOrElse {
       logging.error(
         this,

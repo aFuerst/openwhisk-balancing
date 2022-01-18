@@ -104,6 +104,7 @@ controller:
     ip: "{{ groups['redis'] | first }}"
   loadStrategy: "{{ controller_loadstrategy | default('simple_load') }}"
   horizScale: "{{ controller_horizscale | default(false) }}"
+  maxChainLen: "{{ controller_maxChainLen | default(2) }}"
   akka:
     provider: cluster
     cluster:

@@ -24,7 +24,7 @@ def path_to_lb(pth):
 
   if args.ceil:
     p = [p for p in parts if "compare-" in p][-1]
-    return p.split("-")[-1]
+    return float(p.split("-")[-1])
   else:
     return parts[-1].split("-")[1]
 
@@ -38,7 +38,7 @@ def plot(paths, users):
     if not str(users) + "-" in pth:
       continue
     df = pd.read_csv(file)
-    print(file)
+    # print(file)
     warm = len(df[df["cold"] == False])
     cold = len(df[df["cold"] == True])
 
@@ -55,8 +55,8 @@ def plot(paths, users):
     labels = [x for x in sorted(warm_dict.keys())]
   else:
     map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR',
-          'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU', 'GreedyBalancer':'Greedy',
-            "EnhancedShardingContainerPoolBalancer":"Enhance"}
+          'ShardingContainerPoolBalancer':'Sharding', 'GreedyBalancer':'Greedy', 'RandomLoadUpdateBalancer':'old_RLU',
+            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU"}
     labels = [map_labs[x] for x in sorted(warm_dict.keys())]
   # print(labels)
   colds = []

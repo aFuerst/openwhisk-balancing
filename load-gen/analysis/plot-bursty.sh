@@ -1,18 +1,19 @@
 #!/bin/bash
 
-for ITER in 0 1 2
+for ITER in 0 1 2 3
 do
 
 for USERS in 120 80
 do
 
-for BAL in BoundedLoadsLoadBalancer RoundRobinLB ShardingContainerPoolBalancer RandomForwardLoadBalancer RandomLoadUpdateBalancer EnhancedShardingContainerPoolBalancer
+for BAL in BoundedLoadsLoadBalancer RoundRobinLB ShardingContainerPoolBalancer EnhancedShardingContainerPoolBalancer RLUShardingBalancer # RandomForwardLoadBalancer RandomLoadUpdateBalancer
 do
 
-python3 plot_invoker_load.py "/extra/alfuerst/openwhisk-logs-two/bursty/$ITER/$USERS-$BAL/" $USERS
-python3 map_invocation_to_load.py "/extra/alfuerst/openwhisk-logs-two/bursty/$ITER/$USERS-$BAL/" $USERS
-python3 plot_invocations.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/*/* --users $USERS
-python3 latency_over_time.py --path "/extra/alfuerst/openwhisk-logs-two/bursty/$ITER/$USERS-$BAL/" --users $USERS
+python3 plot_invoker_load.py "/extra/alfuerst/openwhisk-logs-two/bursty/$ITER/$USERS-$BAL/" $USERS &
+python3 map_invocation_to_load.py "/extra/alfuerst/openwhisk-logs-two/bursty/$ITER/$USERS-$BAL/" $USERS &
+python3 scatter_invocation_to_load.py "/extra/alfuerst/openwhisk-logs-two/bursty/$ITER/$USERS-$BAL/" $USERS &
+python3 plot_invocations.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/*/* --users $USERS &
+python3 latency_over_time.py --path "/extra/alfuerst/openwhisk-logs-two/bursty/$ITER/$USERS-$BAL/" --users $USERS &
 
 done
 

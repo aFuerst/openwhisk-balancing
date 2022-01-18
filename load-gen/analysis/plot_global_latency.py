@@ -14,6 +14,7 @@ import pickle
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
 parser.add_argument("--users", type=int, default=100, required=False)
+parser.add_argument("--ceil", required=False, action='store_true')
 args = parser.parse_args()
 
 base_file = "parsed_successes.csv"
@@ -50,7 +51,11 @@ def load_warm_times(specific_funcs=None):
 
 def path_to_lb(pth):
   parts = pth.split("/")
-  return parts[-1].split("-")[1]
+  if args.ceil:
+    p = [p for p in parts if "compare-" in p][-1]
+    return float(p.split("-")[-1])
+  else:
+    return parts[-1].split("-")[1]
 
 def _apply_func_name(data, specific_funcs):
   name = data["function"]
@@ -102,8 +107,11 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
     if str(args.users) not in pth:
       continue
     lb = path_to_lb(pth)
-    if "{}-{}".format(args.users, lb) in pth and os.path.exists(os.path.join(pth, base_file)):
+    if args.ceil and os.path.exists(os.path.join(pth, base_file)):
       split_paths[lb].append(os.path.join(pth, base_file))
+    else:
+      if "{}-{}".format(args.users, lb) in pth and os.path.exists(os.path.join(pth, base_file)):
+        split_paths[lb].append(os.path.join(pth, base_file))
 
   data = []
   stds = []
@@ -118,9 +126,12 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
   fig.set_size_inches(5, 3)
 
   map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 
-        'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU', 'GreedyBalancer':'Greedy',
-            "EnhancedShardingContainerPoolBalancer":"Enhance"}
-  labels = [map_labs[x] for x in sorted(split_paths.keys())]
+        'ShardingContainerPoolBalancer':'Sharding', 'GreedyBalancer':'Greedy', 'RandomLoadUpdateBalancer':'old_RLU',
+            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU"}
+  if args.ceil:
+    labels = sorted(split_paths.keys())
+  else:
+    labels = [map_labs[x] for x in sorted(split_paths.keys())]
 
   ax.bar(labels, data, yerr=stds)
 
@@ -129,7 +140,10 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
   else:
     save_fname = os.path.join("{}-global-latencies{}.pdf".format(args.users, name))
   ax.set_ylabel("Global Latency")
-  ax.set_xlabel("LoadBalancing Policy")
+  if args.ceil:
+    ax.set_xlabel("Bounded Load")
+  else:
+    ax.set_xlabel("LoadBalancing Policy")
 
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)

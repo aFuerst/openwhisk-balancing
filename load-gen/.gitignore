@@ -32,5 +32,7 @@ load/vary-ceil/
 load/30min-compare/
 load/vary-ceil-30min/
 load/*.log
+analysis/bursty/
+analysis/compare/
 
 analysis/**/*png

@@ -277,6 +277,8 @@
         "{{ controller.loadStrategy }}"
       "CONFIG_whisk_loadbalancer_horizScale":
         "{{ controller.horizScale }}"
+      "CONFIG_whisk_loadbalancer_maxChainLen":
+        "{{ controller.maxChainLen }}"
 
       "CONFIG_kamon_statsd_hostname": "{{ metrics.kamon.host }}"
       "CONFIG_kamon_statsd_port": "{{ metrics.kamon.port }}"

@@ -207,6 +207,12 @@ class EnhancedShardingContainerPoolBalancer(
         Future.failed(LoadBalancerException("No invokers available"))
       }
   }
+
+  override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
+    schedulingState.invokerSlots
+      .lift(invoker.toInt)
+      .foreach(_.releaseConcurrent(entry.fullyQualifiedEntityName, entry.maxConcurrent, entry.memoryLimit.toMB.toInt))
+  }
 }
 
 object EnhancedShardingContainerPoolBalancer extends LoadBalancerProvider {

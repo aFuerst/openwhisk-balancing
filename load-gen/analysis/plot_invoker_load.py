@@ -58,9 +58,12 @@ def plot(path, metric):
             pack["vm_cpu"] = pack["us"] + pack["sy"]
 
             file_data.append(pack)
-            # break
+             # break
       df = pd.DataFrame.from_records(file_data, index="time")
-      df = df[df["usedMem"] > 128.0]
+      # temp = df[df["usedMem"] > 128.0]
+      # if len(temp) != 0:
+      #   print(file)
+      #   df = temp
       df = df.resample("S").mean().interpolate()
       df.index = df.index - (df.index[0] - time_min)
       xs = date_idx_to_min(df.index)
@@ -71,16 +74,16 @@ def plot(path, metric):
       # time_min = min(time_min, df.index[0])
       # print(df) #.describe())
 
-    # print(mean_df)
-    new_col = "{}_{}".format(i, metric)
-    invoker_cols.append(new_col)
-    if mean_df is None:
-      renamed = df.rename(columns= {metric : new_col})
+      # print(mean_df)
+      new_col = "{}_{}".format(i, metric)
+      invoker_cols.append(new_col)
+      if mean_df is None:
+        renamed = df.rename(columns= {metric : new_col})
 
-      mean_df = renamed[[new_col]]
-    else:
-      renamed = df.rename(columns= {metric : new_col})
-      mean_df = mean_df.join(renamed[[new_col]])
+        mean_df = renamed[[new_col]]
+      else:
+        renamed = df.rename(columns= {metric : new_col})
+        mean_df = mean_df.join(renamed[[new_col]])
 
   times = date_idx_to_min(mean_df.index)
   if "mem" in metric.lower():

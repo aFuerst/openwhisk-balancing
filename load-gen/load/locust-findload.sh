@@ -5,9 +5,9 @@ timeout 120 sshpass -p $1 ssh $2 "docker rm -f \$(docker ps -aq)" &> /dev/null
 }
 
 export HOST=https://172.29.200.161:10001
-export AUTH=fd7a1d63-0944-45c6-9578-15bc7048031e:UXx4vs0BXnDrlnJiBTHp0fn9kMtyWTWQJBFLWdb62rSkixwkSE748RSkOT7ReoTp
+export AUTH=e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4PplCp2riFYn49TnBogJb21V09EcEzIw2D
 
-for USERS in {20..300..20}
+for USERS in {20..120..10}
 do
 
 MEMORY="32G"
@@ -15,7 +15,7 @@ IMAGE="alfuerst"
 LOADSTRAT="LoadAvg"
 ALGO="RandomForward"
 OUTPTH="/out/path/name.csv"
-BALANCER="RoundRobinLB"
+BALANCER="ShardingContainerPoolBalancer"
 # RoundRobinLB
 EVICTION="GD"
 ENVIRONMENT="host-distrib"
@@ -30,7 +30,7 @@ r=5
 warmup=$(($USERS/$r))
 echo "users: $USERS; warmup seconds: $warmup"
 BASEPATH="/extra/alfuerst/openwhisk-logs-two/"
-pth="$BASEPATH/findload/$USERS-users"
+pth="$BASEPATH/findload/$USERS-$BALANCER"
 mkdir -p $pth
 user='ow'
 pw='OwUser'
@@ -120,7 +120,7 @@ sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/nginx/n
 
   done
 
-# python3 ../analysis/plot_invoker_load.py $pth $USERS
+python3 ../analysis/plot_invoker_load.py $pth $USERS
 # python3 ../analysis/plot_invocations.py $pth $USERS
 # python3 ../analysis/map_invocation_to_load.py $pth $USERS
 done

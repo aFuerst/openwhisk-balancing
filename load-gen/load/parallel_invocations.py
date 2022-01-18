@@ -8,7 +8,7 @@ import json
 # import pandas as pd
 
 host="https://172.29.200.161:10001"
-auth="fd7a1d63-0944-45c6-9578-15bc7048031e:UXx4vs0BXnDrlnJiBTHp0fn9kMtyWTWQJBFLWdb62rSkixwkSE748RSkOT7ReoTp"
+auth="e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4PplCp2riFYn49TnBogJb21V09EcEzIw2D"
 
 pool = ThreadPoolExecutor(max_workers=3)
 set_properties(host=host, auth=auth)
@@ -30,7 +30,7 @@ results = defaultdict(lambda: defaultdict(list))
 
 for name, action in action_dict.items():
   print(name)
-  for i in range(1,20):
+  for i in range(1,30):
     for repeats in range(3):
       futures = []
       for j in range(i):
@@ -40,16 +40,32 @@ for name, action in action_dict.items():
         data = future.result()
         results[name][i].append(data)
 
-# for k in results.keys():
-#   print("{} warm results, avg = {}; min = {}".format(k, sum(results[k]) / len(results[k]), min(results[k])))
-#   # if len(cold_results[k]) > 0:
-#   #   print("cold results, avg = {}; min = {}".format(k), sum(cold_results[k]) / len(cold_results[k]), min(cold_results[k]))
-
-with open("parallel_invokes.pckl", "w+b") as f:
+with open("warm_parallel_invokes.pckl", "w+b") as f:
   results = json.loads(json.dumps(results))
   pickle.dump(results, f)
 
-# df = pd.DataFrame.from_records(data, columns=[func, "was_cold", "latency"])
-# df.to_csv("run.csv")
+#############################################################################
 
+results = defaultdict(lambda: defaultdict(list))
 
+for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
+  print(action_name)
+  path = os.path.join("../ow-actions", zip_file)
+
+  for i in range(1, 30):
+    for repeats in range(3):
+      # new upload forces cold starts by preventing old conatiner reuse
+      url = add_web_action(action_name, path, container, memory=memory, host=host)
+      action = Action(action_name, url, warm_time, cold_time)
+
+      futures = []
+      for j in range(i):
+        future = invoke_web_action_async(action.url, pool, auth, host)
+        futures.append((action, future))
+      for action, future in futures:
+        data = future.result()
+        results[name][i].append(data)
+
+with open("cold_parallel_invokes.pckl", "w+b") as f:
+  results = json.loads(json.dumps(results))
+  pickle.dump(results, f)

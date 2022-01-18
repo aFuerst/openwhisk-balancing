@@ -51,6 +51,7 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
 
   @task
   def invoke(self):
+    start_t = end_t = 0
     # if self.user.environment.shape_class.bursty:
     #   print("bursty")
     action = random.choices(population=self.user.environment.shape_class.actions, weights=self.user.environment.shape_class.weights, k=1)[0]

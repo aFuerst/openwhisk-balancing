@@ -18,7 +18,7 @@ STRAT="SimpleLoad"
 MINS=10
 
 export HOST=https://172.29.200.161:10001
-export AUTH=5973c02d-4c68-4b6d-af13-17f9e3e82028:ezIS6fF9BREmaMLGZrVDT7Y3SauPQdt7u1rNsDnHhUPweeC186J0OePoe1kabdh4
+export AUTH=e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4PplCp2riFYn49TnBogJb21V09EcEzIw2D
 
 for GBS in 16 18
 do

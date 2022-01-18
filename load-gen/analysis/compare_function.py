@@ -11,14 +11,13 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
-
+import pickle
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
 parser.add_argument("--users", type=int, default=50, required=False)
 args = parser.parse_args()
 
-path = args.path[1]
 users = args.users
 # for p in args.path:
 #   print(p)
@@ -27,17 +26,29 @@ rand_str = "RandomForwardLoadBalancer"
 bound_str = "BoundedLoadsLoadBalancer"
 rr_str = "RoundRobinLB"
 shard_str = "ShardingContainerPoolBalancer"
-rlu_str = "RandomLoadUpdateBalancer"
+rlu_str = "RLUShardingBalancer"
+enhance="EnhancedShardingContainerPoolBalancer"
 
 base_file = "parsed_successes.csv"
 
-out=[]
-warm_times = [0.3525, 3.035, 1.344, 0.2484, 0.8558, 0.3944, 6.7276, 0.2661, 9.1485, 0.7716, 6.1336, 0.4874]
-min_warm_times = [0.05505, 1.6623, 0.24349, 0.044388, 0.33531, 0.03527, 6.44305, 0.03420, 8.06751, 0.60664, 6.06870, 0.10007]
-actions = ["cham", "cnn", "dd", "float", "gzip", "hello", "image", "lin_pack", "train", "aes", "video", "json"]
-tmp = pd.read_csv(os.path.join(path, base_file))
+warm_results = None
+with open("../load/warmdata_16.pckl", "r+b") as f:
+  warm_results = pickle.load(f)
+
+min_warm_times = {}
+for k in warm_results.keys():
+  min_warm_times[k] = min(warm_results[k])
+
+for i in range(len(args.path)):
+  path = os.path.join(args.path[0], "parsed_successes.csv")
+  if os.path.exists(path):
+    tmp = pd.read_csv(path)
+    break
+if tmp is None:
+  exit(0)
 func_names = tmp["function"].unique()
-for warm_time, k in zip(min_warm_times, actions):
+out = []
+for k, warm_time in min_warm_times.items():
   for name in func_names:
     if k in name:
       out.append((name,warm_time))
@@ -165,8 +176,8 @@ def compare(numerator_str, denom_str, paths):
   # ax.set_yscale('log')
 
   map_labs = {'BoundedLoadsLoadBalancer': 'Bounded', 'RandomForwardLoadBalancer': 'Random Forward',
-            'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'Sharding', 'RandomLoadUpdateBalancer': 'RLU',
-            "EnhancedShardingContainerPoolBalancer":"Enhance"}
+            'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'Sharding', #'RandomLoadUpdateBalancer': 'RLU',
+            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU"}
 
   ax.set_title("{} / {}".format(map_labs[numerator_str], map_labs[denom_str]))
   save_fname = os.path.join("{}-compare-functions-{}-{}.pdf".format(users, numerator_str, denom_str))

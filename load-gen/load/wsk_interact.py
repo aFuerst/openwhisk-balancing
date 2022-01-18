@@ -164,7 +164,7 @@ def wait_all_popen(procs):
         # print(proc.stdout.read())
 
 if __name__ == "__main__":
-    set_properties(host="https://172.29.200.161:10001", auth="fd7a1d63-0944-45c6-9578-15bc7048031e:UXx4vs0BXnDrlnJiBTHp0fn9kMtyWTWQJBFLWdb62rSkixwkSE748RSkOT7ReoTp")
+    set_properties(host="https://172.29.200.161:10001", auth="e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4PplCp2riFYn49TnBogJb21V09EcEzIw2D")
     for zip_file, action_name, container, memory in zip(zips, actions, containers, mem):
         path = os.path.join("../ow-actions", zip_file)
         add_action(action_name, path, container, memory=memory)
