@@ -60,10 +60,12 @@ def plot(path, metric):
             file_data.append(pack)
              # break
       df = pd.DataFrame.from_records(file_data, index="time")
-      # temp = df[df["usedMem"] > 128.0]
-      # if len(temp) != 0:
-      #   print(file)
-      #   df = temp
+      temp = df[df["usedMem"] > 128.0]
+      if len(temp) != 0:
+        df = temp
+      else:
+        print("!!!no times had usedMem above 128!!!", file)
+
       df = df.resample("S").mean().interpolate()
       df.index = df.index - (df.index[0] - time_min)
       xs = date_idx_to_min(df.index)

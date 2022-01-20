@@ -19,7 +19,7 @@ package org.apache.openwhisk.core.loadBalancer
 
 import akka.actor.ActorRef
 import akka.actor.ActorRefFactory
-import java.util.concurrent.ThreadLocalRandom
+// import java.util.concurrent.ThreadLocalRandom
 
 import akka.actor.{ActorSystem}
 import org.apache.kafka.clients.producer.RecordMetadata
@@ -70,6 +70,7 @@ class RLULFSharding(
       val homeInvoker = hash % invokersToUse.size
       val stepSize = stepSizes(hash % stepSizes.size)
       val invoker: Option[(InvokerInstanceId, Boolean)] = RLULFSharding.schedule(
+        action.limits.concurrency.maxConcurrent,
         msg.activationId,
         action.fullyQualifiedName(true),
         invokersToUse,
@@ -274,7 +275,7 @@ object RLULFSharding extends LoadBalancerProvider {
     return load + max(0.0, load_distrib.sample())
   }
 
-  def underLoad(invoker: InvokerInstanceId, schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)
+  def runLocalOverloaded(invoker: InvokerInstanceId, schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig)
     (implicit logging: Logging, transid: TransactionId) : Boolean = {
 
     // assume function is popular
@@ -282,7 +283,7 @@ object RLULFSharding extends LoadBalancerProvider {
     val cutoff = schedulingState.getLoadCutoff(lbConfig.loadStrategy)
     val Lnoisy = noisyLoad(load)
     val ret = Lnoisy > cutoff
-    logging.info(this, s"invoker ${invoker} under load? ${load} (${Lnoisy}) < ${cutoff} = ${ret}")
+    logging.info(this, s"invoker ${invoker} over load? ${load} (${Lnoisy}) > ${cutoff} = ${ret}")
     ret
   }
 
@@ -299,7 +300,7 @@ object RLULFSharding extends LoadBalancerProvider {
 
   /**
    * Scans through all invokers and searches for an invoker tries to get a free slot on an invoker. If no slot can be
-   * obtained, randomly picks a healthy invoker.
+   * obtained, picks a healthy invoker by least loaded.
    *
    * @param aId 
    * @param invokers a list of available invokers to search in, including their state
@@ -309,7 +310,7 @@ object RLULFSharding extends LoadBalancerProvider {
    * @param step stable identifier of the entity to be scheduled
    * @return an invoker to schedule to or None of no invoker is available
    */
-  def schedule(
+  def schedule(maxConcurrent: Int,
     aId: ActivationId,
     fqn: FullyQualifiedEntityName,
     invokers: IndexedSeq[InvokerHealth],
@@ -321,17 +322,30 @@ object RLULFSharding extends LoadBalancerProvider {
     schedulingState: RedisAwareLoadBalancerState,
     lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transId: TransactionId): Option[(InvokerInstanceId, Boolean)] = {
     val strName = s"${fqn.namespace}/${fqn.name}"
-    if (shortWarmTime(strName, schedulingState)) {
+    val invoker = invokers(index).id
+    if (shortWarmTime(strName, schedulingState) && dispatched(invoker.toInt).tryAcquireConcurrent(fqn, maxConcurrent, slots)) {
       // always run short invocation on home invoker
-      return Some(invokers(index).id, true)
+      return Some(invoker, true)
     }
+    
+    // val invoker = invokers(index)
+    // if (runLocalOverloaded(invoker.id, schedulingState, lbConfig)) {
+    //   val newIndex = (index + step) % invokers.size
+    //   return schedule(aId, fqn, invokers, dispatched, slots, newIndex, step, stepsDone+1, schedulingState, lbConfig)
+    // } else {
+    //   if (stepsDone > 0) {
+    //     logging.info(this, s"pushed popular invocation ${stepsDone} places for ${aId}")
+    //   }
+    //   // schedulingState.incrementLoad(invoker.id, extra_anticip_load)
+    //   return Some(invoker.id, false)
+    // }
 
     if (invokers.size > 0) {
       if (popular(strName)) {
-        return schedulePop(aId, strName, invokers, dispatched, slots, index, step, stepsDone, schedulingState, lbConfig)
+        return schedulePop(maxConcurrent, aId, fqn, strName, invokers, dispatched, slots, index, step, stepsDone, schedulingState, lbConfig)
       }
       else {
-        return scheduleUnpop(aId, strName, invokers, dispatched, slots, index, step, stepsDone, schedulingState, lbConfig)
+        return scheduleUnpop(maxConcurrent, aId, fqn, strName, invokers, dispatched, slots, index, step, stepsDone, schedulingState, lbConfig)
       }
     }
     else {
@@ -339,8 +353,25 @@ object RLULFSharding extends LoadBalancerProvider {
     }
   }
 
+  def leastLoad(invokers: IndexedSeq[InvokerHealth], schedulingState: RedisAwareLoadBalancerState, lbConfig: ShardingContainerPoolBalancerConfig) : InvokerHealth = {
+    invokers.reduceLeft((left, right) =>
+      {
+        val ll = schedulingState.getLoad(left.id, lbConfig.loadStrategy)
+        val rl = schedulingState.getLoad(right.id, lbConfig.loadStrategy)
+        if (ll > rl) {
+          right
+        }
+        else {
+          left
+        }
+      }
+    )
+  }
+
   @tailrec
-  def schedulePop(aId: ActivationId,
+  def schedulePop(maxConcurrent: Int,
+    aId: ActivationId,
+    fqn: FullyQualifiedEntityName,
     strName: String,
     invokers: IndexedSeq[InvokerHealth],
     dispatched: IndexedSeq[NestedSemaphore[FullyQualifiedEntityName]],
@@ -352,28 +383,32 @@ object RLULFSharding extends LoadBalancerProvider {
     lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transId: TransactionId): Option[(InvokerInstanceId, Boolean)] = {
 
     if (stepsDone > lbConfig.maxChainLen) {
-      val random = invokers(ThreadLocalRandom.current().nextInt(invokers.size)).id
-      logging.warn(this, s"system is overloaded. Chose invoker${random.toInt} by random assignment for popular ${aId}")
+      // val random = invokers(ThreadLocalRandom.current().nextInt(invokers.size)).id
+      val ll = leastLoad(invokers, schedulingState, lbConfig).id
+      logging.warn(this, s"system is overloaded. Chose invoker${ll.toInt} by least loaded assignment for popular ${aId}")
+      dispatched(ll.toInt).forceAcquireConcurrent(fqn, maxConcurrent, slots)
       // schedulingState.incrementLoad(random, extra_anticip_load)
-      return Some(random, true)
+      return Some(ll, true)
     }
 
     val invoker = invokers(index)
-    if (underLoad(invoker.id, schedulingState, lbConfig)) {
-      val newIndex = (index + step) % invokers.size
-      return schedulePop(aId, strName, invokers, dispatched, slots, newIndex, step, stepsDone+1, schedulingState, lbConfig)
-    }
-    else {
+    if (!runLocalOverloaded(invoker.id, schedulingState, lbConfig) && dispatched(invoker.id.toInt).tryAcquireConcurrent(fqn, maxConcurrent, slots)) {
       if (stepsDone > 0) {
         logging.info(this, s"pushed popular invocation ${stepsDone} places for ${aId}")
       }
       // schedulingState.incrementLoad(invoker.id, extra_anticip_load)
       return Some(invoker.id, false)
     }
+    else {
+      val newIndex = (index + step) % invokers.size
+      return schedulePop(maxConcurrent, aId, fqn, strName, invokers, dispatched, slots, newIndex, step, stepsDone+1, schedulingState, lbConfig)
+    }
   }
 
   @tailrec
-  def scheduleUnpop(aId: ActivationId,
+  def scheduleUnpop(maxConcurrent: Int,
+    aId: ActivationId,
+    fqn: FullyQualifiedEntityName,
     strName: String,
     invokers: IndexedSeq[InvokerHealth],
     dispatched: IndexedSeq[NestedSemaphore[FullyQualifiedEntityName]],
@@ -385,10 +420,12 @@ object RLULFSharding extends LoadBalancerProvider {
     lbConfig: ShardingContainerPoolBalancerConfig)(implicit logging: Logging, transId: TransactionId): Option[(InvokerInstanceId, Boolean)] = {
 
     if (stepsDone > lbConfig.maxChainLen) {
-      val random = invokers(ThreadLocalRandom.current().nextInt(invokers.size)).id
-      logging.warn(this, s"system is overloaded. Chose invoker${random.toInt} by random assignment for unpopular ${aId}")
+      // val random = invokers(ThreadLocalRandom.current().nextInt(invokers.size)).id
+      val ll = leastLoad(invokers, schedulingState, lbConfig).id
+      logging.warn(this, s"system is overloaded. Chose invoker${ll.toInt} by least loaded assignment for unpopular ${aId}")
+      dispatched(ll.toInt).forceAcquireConcurrent(fqn, maxConcurrent, slots)
       // schedulingState.incrementLoad(random, extra_anticip_load)
-      return Some(random, true)
+      return Some(ll, true)
     }
 
     var times = schedulingState.runTimes.getOrElse(strName, (0.0, 0.0))
@@ -403,7 +440,7 @@ object RLULFSharding extends LoadBalancerProvider {
     val invoker = invokers(index).id
     val serverLoad = schedulingState.getLoad(invoker, lbConfig.loadStrategy)
 
-    if (serverLoad - thresh <= 0) {
+    if (serverLoad - thresh <= 0 && dispatched(invoker.toInt).tryAcquireConcurrent(fqn, maxConcurrent, slots)) {
       if (stepsDone > 0) {
         logging.info(this, s"unpopular Activation was pushed ${stepsDone} places to ${invoker} for ${aId}")(transId)
       }
@@ -412,7 +449,7 @@ object RLULFSharding extends LoadBalancerProvider {
       return Some(invoker, true)
     }  else {
       val newIndex = (index + step) % invokers.size
-      return scheduleUnpop(aId, strName, invokers, dispatched, slots, newIndex, step, stepsDone+1, schedulingState, lbConfig)
+      return scheduleUnpop(maxConcurrent, aId, fqn, strName, invokers, dispatched, slots, newIndex, step, stepsDone+1, schedulingState, lbConfig)
     }
   }
 }

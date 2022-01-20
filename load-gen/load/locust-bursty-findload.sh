@@ -17,12 +17,12 @@ do
 export USER_TOT=$USERS
 
 # GreedyBalancer ConsistentHashBalancer # RandomForwardLoadBalancer
-for BALANCER in ShardingContainerPoolBalancer RLULFSharding # BoundedLoadsLoadBalancer RLUShardingBalancer # LeastLoadBalancer 
+for BALANCER in ShardingContainerPoolBalancer RLULFSharding LeastLoadBalancer BoundedLoadsLoadBalancer 
 do
 
-boundedceil="4"
+boundedceil="2"
 if [ "$BALANCER" = "BoundedLoadsLoadBalancer" ]; then
-boundedceil="4"
+boundedceil="5"
 fi
 
 MEMORY="32G"

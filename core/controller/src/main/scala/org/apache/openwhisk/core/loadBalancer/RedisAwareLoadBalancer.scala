@@ -237,7 +237,7 @@ case class RedisAwareLoadBalancerState(
                                                         6 -> "45687", 7 -> "45688"),
   private var lastStartInvokMilis: Long = 0,
   private var wakeInvokerSem: Semaphore = new Semaphore(1, false),
-
+  private var _clusterSize: Int = 1,
 
   private var _invokers: IndexedSeq[InvokerHealth] = IndexedSeq.empty[InvokerHealth])(
   lbConfig: ShardingContainerPoolBalancerConfig =
@@ -247,13 +247,14 @@ case class RedisAwareLoadBalancerState(
   def invokers: IndexedSeq[InvokerHealth] = _invokers
   def managedStepSizes: Seq[Int] = _managedStepSizes
   def invokerSlots: IndexedSeq[NestedSemaphore[FullyQualifiedEntityName]] = _invokerSlots
+  def clusterSize: Int = _clusterSize
 
   /**
    * @param memory
    * @return calculated invoker slot
    */
   private def getInvokerSlot(memory: ByteSize): ByteSize = {
-    val invokerShardMemorySize = memory / _invokers.size
+    val invokerShardMemorySize = memory / 4
     val newTreshold = if (invokerShardMemorySize < MemoryLimit.MIN_MEMORY) {
       logging.error(
         this,
@@ -524,6 +525,27 @@ case class RedisAwareLoadBalancerState(
   }
 
   def updateCluster(newSize: Int): Unit = {
-    // do nothing?
+    val actualSize = newSize max 1 // if a cluster size < 1 is reported, falls back to a size of 1 (alone)
+    if (_clusterSize != actualSize) {
+      val oldSize = _clusterSize
+      _clusterSize = actualSize
+      _invokerSlots = _invokers.map { invoker =>
+        new NestedSemaphore[FullyQualifiedEntityName](getInvokerSlot(invoker.id.userMemory).toMB.toInt)
+      }
+      // Directly after startup, no invokers have registered yet. This needs to be handled gracefully.
+      val invokerCount = _invokers.size
+      val totalInvokerMemory =
+        _invokers.foldLeft(0L)((total, invoker) => total + getInvokerSlot(invoker.id.userMemory).toMB).MB
+      val averageInvokerMemory =
+        if (totalInvokerMemory.toMB > 0 && invokerCount > 0) {
+          (totalInvokerMemory / invokerCount).toMB.MB
+        } else {
+          0.MB
+        }
+      logging.info(
+        this,
+        s"loadbalancer cluster size changed from $oldSize to $actualSize active nodes. ${invokerCount} invokers with ${averageInvokerMemory} average memory size - total invoker memory ${totalInvokerMemory}.")(
+        TransactionId.loadbalancer)
+    }
   }
 }
