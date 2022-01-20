@@ -56,8 +56,6 @@ def plot(paths, users, warm):
       continue
     if not str(users) + "-" in pth:
       continue
-    if not ("RandomLoadUpdateBalancer" in pth or "ShardingContainerPoolBalancer" in pth or "BoundedLoadsLoadBalancer" in pth):
-      continue
     # print(pth)
     df = pd.read_csv(file)
     if warm:

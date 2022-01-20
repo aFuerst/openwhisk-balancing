@@ -15,7 +15,7 @@ do
 for ITERATION in {0..3}
 do
 
-for BALANCER in ShardingContainerPoolBalancer RLUShardingBalancer BoundedLoadsLoadBalancer
+for BALANCER in ShardingContainerPoolBalancer RLUShardingBalancer BoundedLoadsLoadBalancer LeastLoadBalancer
 do
 
 boundedceil="5"

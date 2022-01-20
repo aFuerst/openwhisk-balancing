@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
 parser.add_argument("--users", type=int, default=100, required=False)
 parser.add_argument("--ceil", required=False, action='store_true')
+parser.add_argument("--balancers", nargs='+', required=True)
 args = parser.parse_args()
 
 base_file = "parsed_successes.csv"
@@ -107,11 +108,12 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
     if str(args.users) not in pth:
       continue
     lb = path_to_lb(pth)
-    if args.ceil and os.path.exists(os.path.join(pth, base_file)):
-      split_paths[lb].append(os.path.join(pth, base_file))
-    else:
-      if "{}-{}".format(args.users, lb) in pth and os.path.exists(os.path.join(pth, base_file)):
+    if lb in args.balancers:
+      if args.ceil and os.path.exists(os.path.join(pth, base_file)):
         split_paths[lb].append(os.path.join(pth, base_file))
+      else:
+        if "{}-{}".format(args.users, lb) in pth and os.path.exists(os.path.join(pth, base_file)):
+          split_paths[lb].append(os.path.join(pth, base_file))
 
   data = []
   stds = []

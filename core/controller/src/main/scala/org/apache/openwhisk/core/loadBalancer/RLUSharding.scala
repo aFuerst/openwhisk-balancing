@@ -219,7 +219,7 @@ class RLUShardingBalancer(
   }
 
   override protected def customUpdate() : Unit = {
-    RandomLoadUpdateBalancer.updatePopularity(schedulingState, lbConfig)
+    RLUShardingBalancer.updatePopularity(schedulingState, lbConfig, totalActivations.longValue, first_invoke)
   }
 
   override def releaseInvoker(invoker: InvokerInstanceId, entry: ActivationEntry) = {
@@ -392,7 +392,7 @@ object RLUShardingBalancer extends LoadBalancerProvider {
         if (stepsDone > 0) {
           logging.info(this, s"pushed invocation ${stepsDone} places")
         }
-        schedulingState.incrementLoad(invoker.id, load_per_invoke)
+        // schedulingState.incrementLoad(invoker.id, load_per_invoke)
         Some(invoker.id, false)
       } else {
         // If we've gone through all invokers
@@ -403,7 +403,7 @@ object RLUShardingBalancer extends LoadBalancerProvider {
             val random = healthyInvokers(ThreadLocalRandom.current().nextInt(healthyInvokers.size)).id
             dispatched(random.toInt).forceAcquireConcurrent(fqn, maxConcurrent, slots)
             logging.warn(this, s"system is overloaded. Chose invoker${random.toInt} by random assignment.")
-            schedulingState.incrementLoad(invoker.id, load_per_invoke)
+            // schedulingState.incrementLoad(random, load_per_invoke)
             Some(random, true)
           } else {
             None

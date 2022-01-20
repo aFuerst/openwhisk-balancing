@@ -56,7 +56,35 @@ for pth in path:
   key = path_to_lb(pth)
   with open(file) as f:
     for line in f:
-      if "was pushed" in line:
+      if "pushed invocation " in line:
+        marker = "invocation "
+        pos = line.find(marker)
+        dist_start = pos + len(marker)  # line[pos:len(marker)]
+        dist_end = line.find(" ", dist_start)
+        dist = int(line[dist_start:dist_end])
+        pop_distances.append(dist)
+
+      if "pushed popular invocation " in line:
+        marker = "invocation "
+        pos = line.find(marker)
+        dist_start = pos + len(marker)  # line[pos:len(marker)]
+        dist_end = line.find(" ", dist_start)
+        dist = int(line[dist_start:dist_end])
+        pop_distances.append(dist)
+      elif "unpopular Activation was pushed " in line:
+        marker = "was pushed "
+        pos = line.find(marker)
+        dist_start = pos + len(marker)  # line[pos:len(marker)]
+        dist_end = line.find(" ", dist_start)
+        dist = int(line[dist_start:dist_end])
+        unpop_distances.append(dist)
+
+      elif "system is overloaded" in line:
+        if "unpopular" in line:
+          unpop_distances.append(3)
+        else:
+          pop_distances.append(3)
+      elif "was pushed" in line:
         dist = get_push_dist(line)
         if "unpopular" in line:
           # [2021-12-12T06:58:51.229Z] [INFO] [#tid_gFHGdfpJp9s17uO9HUJeLLEaN2SOEEn4] [RandomLoadUpdateBalancer] unpopular Activation ab6c05de03b24b07ac05de03b2eb072b was pushed 1 places to invoker3/3, from invoker5/5

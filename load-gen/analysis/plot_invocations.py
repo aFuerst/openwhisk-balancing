@@ -62,7 +62,7 @@ def plot(paths, users):
           # break
           pack = {}
           pack["time"] = parsedtime
-          pack["invoker"] = invoker
+          pack["invoker"] = int(invoker)
           pack["activation_id"] = str(activation_id)
 
           controller_data.append(pack)
@@ -73,12 +73,13 @@ def plot(paths, users):
     df = pd.DataFrame.from_records(controller_data)#, index="time")
     # print(df.columns)
     df["time"] = df["time"].dt.round("20s")
-
+    colors = ["tab:blue", "tab:orange", "tab:green", "tab:red",
+              "tab:purple", "tab:brown", "tab:pink", "tab:olive"]
     fig, ax = plt.subplots()
     plt.tight_layout()
     fig.set_size_inches(5, 3)
 
-    for invoker in df["invoker"].unique():
+    for i, invoker in enumerate(sorted(df["invoker"].unique())):
       groups = df[df["invoker"] == invoker].groupby(["time"])
       data = []
       xs = []
@@ -87,7 +88,7 @@ def plot(paths, users):
         xs.append(date_idx_to_min(g[0]))
         ys.append(len(g[1]))
         data.append((g[0], len(g[1])))
-      ax.plot(xs, ys, label=invoker)
+      ax.plot(xs, ys, label=int(invoker), color=colors[i])
     save_fname = os.path.join(path, "{}-invokes.pdf".format(args.users))
 
     ax.set_ylabel("Invocations")

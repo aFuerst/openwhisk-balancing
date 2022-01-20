@@ -177,7 +177,7 @@ def compare(numerator_str, denom_str, paths):
 
   map_labs = {'BoundedLoadsLoadBalancer': 'Bounded', 'RandomForwardLoadBalancer': 'Random Forward',
             'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'Sharding', #'RandomLoadUpdateBalancer': 'RLU',
-            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU"}
+            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU", "LeastLoadBalancer":"LL"}
 
   ax.set_title("{} / {}".format(map_labs[numerator_str], map_labs[denom_str]))
   save_fname = os.path.join("{}-compare-functions-{}-{}.pdf".format(users, numerator_str, denom_str))
@@ -185,11 +185,12 @@ def compare(numerator_str, denom_str, paths):
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 
-compare(shard_str, bound_str, args.path)
-compare(shard_str, rand_str, args.path)
-compare(bound_str, rand_str, args.path)
-compare(rr_str, rand_str, args.path)
+# compare(shard_str, bound_str, args.path)
+# compare(shard_str, rand_str, args.path)
+# compare(bound_str, rand_str, args.path)
+# compare(rr_str, rand_str, args.path)
 compare(shard_str, rlu_str, args.path)
-compare(bound_str, rlu_str, args.path)
-
-compare(rand_str, rlu_str, args.path)
+compare("LeastLoadBalancer", rlu_str, args.path)
+# compare(bound_str, rlu_str, args.path)
+# compare(rand_str, rlu_str, args.path)
+ 
