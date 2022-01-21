@@ -9,7 +9,7 @@ export AUTH=e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4
 
 # ShardingContainerPoolBalancer RoundRobinLB BoundedLoadsLoadBalancer RandomLoadUpdateBalancer RandomForwardLoadBalancer GreedyBalancer
 
-for USERS in 20 120
+for USERS in 20 80 120
 do
 
 for ITERATION in {0..3}
@@ -18,9 +18,9 @@ do
 for BALANCER in ShardingContainerPoolBalancer LeastLoadBalancer BoundedLoadsLoadBalancer RLULFSharding
 do
 
-boundedceil="5"
+boundedceil="6"
 if [ "$BALANCER" = "BoundedLoadsLoadBalancer" ]; then
-boundedceil="5"
+boundedceil="4"
 fi
 
 MEMORY="32G"

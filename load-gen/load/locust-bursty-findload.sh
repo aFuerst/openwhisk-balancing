@@ -11,18 +11,18 @@ export AUTH=e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4
 for ITERATION in {0..3}
 do
 
-for USERS in 120 # 20
+for USERS in 120 80
 do
 
 export USER_TOT=$USERS
 
 # GreedyBalancer ConsistentHashBalancer # RandomForwardLoadBalancer
-for BALANCER in ShardingContainerPoolBalancer RLULFSharding LeastLoadBalancer BoundedLoadsLoadBalancer 
+for BALANCER in RLULFSharding ShardingContainerPoolBalancer LeastLoadBalancer BoundedLoadsLoadBalancer # RLUShardingBalancer
 do
 
-boundedceil="2"
+boundedceil="6"
 if [ "$BALANCER" = "BoundedLoadsLoadBalancer" ]; then
-boundedceil="5"
+boundedceil="4"
 fi
 
 MEMORY="32G"

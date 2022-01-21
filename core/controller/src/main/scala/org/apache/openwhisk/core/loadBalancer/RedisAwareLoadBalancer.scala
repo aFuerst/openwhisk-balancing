@@ -254,7 +254,7 @@ case class RedisAwareLoadBalancerState(
    * @return calculated invoker slot
    */
   private def getInvokerSlot(memory: ByteSize): ByteSize = {
-    val invokerShardMemorySize = memory / 4
+    val invokerShardMemorySize = memory / _invokers.size
     val newTreshold = if (invokerShardMemorySize < MemoryLimit.MIN_MEMORY) {
       logging.error(
         this,
@@ -292,8 +292,6 @@ case class RedisAwareLoadBalancerState(
         case None => logging.error(this, s"bad invoker id? $invoker")(TransactionId.invokerRedis)
         }
       }
-
-
   }
 
   def locateNode(name: String) : Option[ConsistentCacheInvokerNode] = {
