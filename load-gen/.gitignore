@@ -34,5 +34,6 @@ load/vary-ceil-30min/
 load/*.log
 analysis/bursty/
 analysis/compare/
+analysis/openload/
 
 analysis/**/*png

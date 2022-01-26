@@ -111,7 +111,7 @@ def plot(paths, users, warm):
 
   poss = [2*i for i in range(len(pts))]
   print(len(pts), len(labels), len(poss))
-  map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU'}
+  map_labs = {'BoundedLoadsLoadBalancer':'CH-BL', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 'ShardingContainerPoolBalancer':'Sharding', 'RandomLoadUpdateBalancer':'RLU'}
   labels = [map_labs[x] for x in labels]
 
   ax.boxplot(pts, labels=labels, positions=poss, showfliers=False)

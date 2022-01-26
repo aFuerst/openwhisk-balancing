@@ -134,7 +134,7 @@ def invoke_web_action_async(url, threadpool, auth, host):
       print("Got exception '{}' when trying to invoke action '{}', result: '{}' - '{}'".format(e, action_url, r.status_code, r.content))
       raise e
 
-    return was_cold, latency, ret_json, activation_id
+    return was_cold, latency, ret_json, activation_id, start
 
   return threadpool.submit(action, url, auth, host)
 
@@ -164,7 +164,7 @@ def wait_all_popen(procs):
         # print(proc.stdout.read())
 
 if __name__ == "__main__":
-    set_properties(host="https://172.29.200.161:10001", auth="e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4PplCp2riFYn49TnBogJb21V09EcEzIw2D")
+    set_properties(host="https://172.29.200.161:10001", auth="5e9fb463-3082-4fce-847b-dbc17a7fbfa0:AZcoEhmD4dMsFTu7SPOAI4NkyDqtyaqkbxyud5bnMW5MssmPtQoC9BggNweGcJIj")
     for zip_file, action_name, container, memory in zip(zips, actions, containers, mem):
         path = os.path.join("../ow-actions", zip_file)
         add_action(action_name, path, container, memory=memory)

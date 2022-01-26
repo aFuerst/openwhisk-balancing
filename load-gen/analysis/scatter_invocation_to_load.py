@@ -51,6 +51,8 @@ def map_load(path, metric="loadAvg"):
     first_time = None
     file = os.path.join(path, "invoker{}_logs.log".format(i))
     file_data = []
+    if not os.path.exists(file):
+      continue
     with open(file) as f:
       for line in f:
         if "Updated data in Redis data" in line:
@@ -194,7 +196,8 @@ def plotPerFunc(load_df, metric):
     # print(df.iloc[warmNormed.index])
     for i in range(len(warmNormed)):
       # print(load.iloc[i], warmNormed.iloc[i])
-      points[func].append((warmNormed.iloc[i], load.iloc[i]))
+      if load.iloc[i] <= 10:
+        points[func].append((warmNormed.iloc[i], load.iloc[i]))
       # xs.append(warmNormed.iloc[i])
       # ys.append(load.iloc[i])
     # break
@@ -257,12 +260,15 @@ def plot(load_df, metric):
 
   points = defaultdict(list)
   grouped = df.groupby(by="function")
-  for name, group in grouped:
+  # print(warm_times['function'].unique())
+  for orig_func, group in grouped:
     *func, freq = name.split("_")
     func = "_".join(func)
+    # print(func)
     group = group[group["cold"] == False]
 
-    warmNormed = group["latency"] / float(warm_times[warm_times['function'] == name]['warm'])
+    warmNormed = group["latency"] / \
+        float(warm_times[warm_times['function'] == orig_func]['warm'])
     # print(len(warmNormed), len(df.iloc[warmNormed.index]["load"]))
     load = df.iloc[warmNormed.index]["load"]
     # load["normed"] = warmNormed 
@@ -272,7 +278,8 @@ def plot(load_df, metric):
     # print(df.iloc[warmNormed.index])
     for i in range(len(warmNormed)):
       # print(load.iloc[i], warmNormed.iloc[i])
-      points[func].append((warmNormed.iloc[i], load.iloc[i]))
+      if load.iloc[i] <= 10:
+        points[func].append((warmNormed.iloc[i], load.iloc[i]))
       # xs.append(warmNormed.iloc[i])
       # ys.append(load.iloc[i])
     # break
@@ -285,6 +292,8 @@ def plot(load_df, metric):
   except:
     pass
 
+  # print(points.keys())
+
   colors = ['black', 'silver', 'maroon', 'orange', 'darkgreen', 'lime', 'navy', 'magenta', 'indigo', 'crimson', 'steelblue', 'pink']
   fig, ax = plt.subplots()
   plt.tight_layout()
@@ -295,6 +304,7 @@ def plot(load_df, metric):
     if len(xs) < 2:
       continue
 
+    # print(func)
     b, a = np.polyfit(xs, ys, deg=1)
     # Create sequence of 100 numbers from 0 to 100
     xseq = np.linspace(min(xs), max(xs), num=100)
@@ -305,7 +315,7 @@ def plot(load_df, metric):
   ax.set_ylabel("Normalized latency")
   ax.legend()
   save_fname = os.path.join(
-      path, "latencies", "{}-{}.png".format("latency_to_load", metric))
+      path, "latencies", "{}-{}.pdf".format("latency_to_load", metric))
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 

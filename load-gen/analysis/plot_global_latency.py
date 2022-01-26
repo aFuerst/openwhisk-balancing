@@ -4,7 +4,7 @@ from types import CoroutineType
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
-mpl.rcParams.update({'font.size': 14})
+mpl.rcParams.update({'font.size': 12})
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype'] = 42
 mpl.use('Agg')
@@ -13,6 +13,7 @@ import pickle
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
+parser.add_argument("--ttl", nargs='+', required=False)
 parser.add_argument("--users", type=int, default=100, required=False)
 parser.add_argument("--ceil", required=False, action='store_true')
 parser.add_argument("--balancers", nargs='+', required=True)
@@ -51,7 +52,7 @@ def load_warm_times(specific_funcs=None):
   return warm_times
 
 def path_to_lb(pth):
-  parts = pth.split("/")
+  parts = pth.strip("/").split("/")
   if args.ceil:
     p = [p for p in parts if "compare-" in p][-1]
     return float(p.split("-")[-1])
@@ -99,13 +100,17 @@ def get_norm_means(expfs, norm_by_cnt=False, specific_funcs=None):
     norm_warm = normalize_lats(expf, norm_by_cnt, specific_funcs)
     means.append(norm_warm.mean())
   means = np.array(means)
-  return means.mean(), means.std()
+  mean, std = means.mean(), means.std()
+  if norm_by_cnt:
+    mean *= 100
+    std *= 100
+  return mean, std
 
 def plot(norm_by_cnt=False, specific_funcs=None, name=""):
   split_paths = defaultdict(list)
 
   for pth in args.path:
-    if str(args.users) not in pth:
+    if "/" + str(args.users) not in pth:
       continue
     lb = path_to_lb(pth)
     if lb in args.balancers:
@@ -114,6 +119,16 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
       else:
         if "{}-{}".format(args.users, lb) in pth and os.path.exists(os.path.join(pth, base_file)):
           split_paths[lb].append(os.path.join(pth, base_file))
+
+  for pth in args.ttl:
+    if "/" + str(args.users) not in pth:
+      continue
+    lb = "TTL"
+    if args.ceil and os.path.exists(os.path.join(pth, base_file)):
+      split_paths[lb].append(os.path.join(pth, base_file))
+    elif os.path.exists(os.path.join(pth, base_file)):
+      split_paths[lb].append(os.path.join(pth, base_file))
+
 
   data = []
   stds = []
@@ -127,13 +142,18 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
   plt.tight_layout()
   fig.set_size_inches(5, 3)
 
-  map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 
-        'ShardingContainerPoolBalancer':'Sharding', 'GreedyBalancer':'Greedy', 'RandomLoadUpdateBalancer':'old_RLU',
-            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU"}
+  map_labs = {'BoundedLoadsLoadBalancer':'CH-BL', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR', 
+        'ShardingContainerPoolBalancer':'OW+GD', "TTL":"OW+TTL", 'GreedyBalancer':'Greedy', 'RandomLoadUpdateBalancer':'old_RLU',
+            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU_shard", "LeastLoadBalancer":"LL",
+            "RLULFSharding":"RLU"}
   if args.ceil:
     labels = sorted(split_paths.keys())
   else:
     labels = [map_labs[x] for x in sorted(split_paths.keys())]
+  print("Normalized" if norm_by_cnt else "not normalized")
+  print(labels)
+  print(data)
+  print("")
 
   ax.bar(labels, data, yerr=stds)
 
@@ -141,7 +161,7 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
     save_fname = os.path.join("{}-global-latencies-cntnorm{}.pdf".format(args.users, name))
   else:
     save_fname = os.path.join("{}-global-latencies{}.pdf".format(args.users, name))
-  ax.set_ylabel("Global Latency")
+  ax.set_ylabel("Global Latency Increase %")
   if args.ceil:
     ax.set_xlabel("Bounded Load")
   else:

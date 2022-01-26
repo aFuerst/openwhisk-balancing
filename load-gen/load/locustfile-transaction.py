@@ -30,8 +30,6 @@ for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, 
 acts, freqs = little._toWeightedData(action_dict)
 
 
-
-
 class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
      
   def on_start(self):

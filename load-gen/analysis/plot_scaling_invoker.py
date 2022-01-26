@@ -1,5 +1,6 @@
 import os, sys, argparse
-from datetime import datetime, timezone
+from pydoc import describe
+from datetime import datetime, timezone, timedelta
 from numpy import dtype
 import pandas as pd
 import matplotlib as mpl
@@ -25,6 +26,12 @@ if len(sys.argv) > 3:
 
 def date_idx_to_min(idx):
   return (idx.second + idx.minute*60) / 60
+
+def fixup_datetime(index):
+  if index.iloc[0].hour < index.iloc[-1].hour:
+    delta = timedelta(minutes=10)
+    index += delta
+  return index
 
 def extract_date(line):
   time, *_ = line.split(" ")
@@ -71,21 +78,41 @@ def plot(path, metric):
           for pair in map:
             invoker, load = pair.split(" -> ")
             invoker = invoker.strip()
-            invok_loads[invoker].append(float(load))
-        # print(time, map)
+            invok_loads[invoker].append(float(load) / 16)
+
+          # print(time, map)
+          # exit()
   
   invoker_cols = [k for k in invok_loads.keys() if k != "time"]
 
+  for invoker in invoker_cols:
+    if invoker in invok_start_times:
+      start_t = invok_start_times[invoker]
+      for i in range(len(invok_loads[invoker])):
+        if invok_loads["time"][i] < start_t:
+          invok_loads[invoker][i] = None
+        else:
+          break
+    # mean_df[invoker] = inv_ser
+
+
   mean_df = pd.DataFrame.from_dict(invok_loads)
-  mean_df.index = mean_df["time"]
+  mean_df.index = fixup_datetime(mean_df["time"])
+  # inv_ser[inv_ser.index > invok_start_times[invoker]]
+
 
   times = date_idx_to_min(mean_df.index)
   # print("times:", times[0])
   t_0 = times[0]
+  # print(t_0)
   times = times - t_0
   mean_df["present"] = mean_df[invoker_cols].notnull().sum(axis=1)
+
+  print(mean_df["present"].describe())
+
   mean_df["mean"] = mean_df[invoker_cols].sum(axis=1) / mean_df["present"]
   mean_df["std"] = mean_df[invoker_cols].std(axis=1)
+  mean_df["var"] = mean_df[invoker_cols].var(axis=1)
   # print(invok_start_times.keys())
 
   for i, invoker in enumerate(invoker_cols):
@@ -94,26 +121,30 @@ def plot(path, metric):
       inv_ser = inv_ser[inv_ser.index > invok_start_times[invoker]]
     xs = date_idx_to_min(inv_ser.index)
     # print("xs:", xs[0], xs[0]-t_0)
+    # print(xs[0])
     xs = xs - t_0
-    ax.plot(xs, inv_ser, label=str(i), color=colors[i])
+    ax.plot(xs, inv_ser, color=colors[i]) # , label=str(i)
 
   final_user_min = (users * sec_per_user) / 60
-  print(final_user_min)
-  ax.vlines(x=final_user_min, ymin=0, ymax=15, color='r')
-  ax.text(final_user_min, 15, "Final User Created", verticalalignment='center')
+  # print(final_user_min)
+  ax.vlines(x=final_user_min, ymin=0, ymax=5, color='r')
+  text="Final User Created"
+  ax.text(final_user_min - 9.1, 5, text, verticalalignment='center', fontsize=12)
 
-  ax.plot(times, mean_df["mean"], label="Mean", color='k')
-  ax.plot(times, mean_df["mean"]+mean_df["std"], label="mean std", color='k', linestyle='dashed')
-  ax.plot(times, mean_df["mean"]-mean_df["std"], color='k', linestyle='dashed')
+  ax.plot(times, mean_df["var"], label="Variance", color='k', linestyle='dashed')
+  # ax.plot(times, mean_df["mean"], label="Mean", color='k')
+  # ax.plot(times, mean_df["mean"]+mean_df["std"], label="mean std", color='k', linestyle='dashed')
+  # ax.plot(times, mean_df["mean"]-mean_df["std"], color='k', linestyle='dashed')
 
   ax.set_ylabel(nice_name)
   ax.set_xlabel("Time (min)")
 
-  ax.legend(bbox_to_anchor=(1.6,.6), loc="right", columnspacing=1)
+  ax.legend(loc='upper left') #bbox_to_anchor=(1.6,.6), loc="right", columnspacing=1)
 
   save_fname = os.path.join(save_pth, "{}-{}.pdf".format(users, metric))
+  print(save_fname)
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 
-for metric in [("loadAvg", "Load Average")]:#  , ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory")]:
+for metric in [("loadAvg", "Invoker Load")]:#  , ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory")]:
   plot(path, metric=metric)

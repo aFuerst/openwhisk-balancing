@@ -6,7 +6,7 @@ export AUTH=5e9fb463-3082-4fce-847b-dbc17a7fbfa0:AZcoEhmD4dMsFTu7SPOAI4NkyDqtyaq
 for ITERATION in {0..3}
 do
 
-for USERS in 120 20
+for USERS in 120
 do
 
 export USER_TOT=$USERS
@@ -27,7 +27,7 @@ redisPass='OpenWhisk'
 redisPort=6379
 ansible=/home/ow/openwhisk-balancing/ansible
 
-BASEPATH="/extra/alfuerst/openwhisk-logs-two/30min-compare-ttl/$ITERATION/"
+BASEPATH="/extra/alfuerst/openwhisk-logs-two/30min-compare-ttl-bursty/$ITERATION/"
 
 r=5
 warmup=$(($USERS/$r))
@@ -46,7 +46,7 @@ ANSIBLE_HOST="$user@172.29.200.161"
 sshpass -p $pw ssh $ANSIBLE_HOST "$cmd" &> "$pth/logs.txt"
 
 
-locust --headless --users $USERS -r $r -f locustfile-transaction.py --csv "$pth/logs" --log-transactions-in-file --run-time 30m &>> "$pth/logs.txt"
+locust --headless -f locustfile-bursty.py --csv "$pth/logs" --log-transactions-in-file &>> "$pth/logs.txt"
 python3 locust_parse.py "$pth/logs_transactions.csv"
 
 sshpass -p $pw scp "$user@172.29.200.161:/home/ow/openwhisk-logs/wsklogs/controller0/controller0_logs.log" $pth

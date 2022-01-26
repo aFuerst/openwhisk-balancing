@@ -13,6 +13,8 @@ import pickle
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
+parser.add_argument("--ttl", nargs='+', required=True)
+parser.add_argument("--balancers", nargs='+', required=True)
 parser.add_argument("--users", type=int, default=100, required=False)
 args = parser.parse_args()
 
@@ -51,7 +53,7 @@ def path_to_key(pth):
     raise Exception("Failure")
   return float(wanted[0][len("compare-"):])
 
-def plot(paths, users, warm):
+def plot(paths, users, warm, ttls):
   mean_sums = defaultdict(int)
   df_dict = defaultdict(list)
   for pth in paths:
@@ -67,6 +69,20 @@ def plot(paths, users, warm):
     for name, group in sorted(grouped, key=lambda p: float(p[0].split("_")[-1])):
       mean_sums[name] += group["latency"].mean()
     df_dict[path_to_key(pth)].append(df)
+
+  for pth in ttls:
+    file = os.path.join(pth, "parsed_successes.csv")
+    if not os.path.exists(file):
+      continue
+    if str(users) + "-" not in pth:
+      continue
+    df = pd.read_csv(file)
+    if warm:
+      df = df[df["cold"] == False]
+    grouped = df.groupby(by="function")
+    for name, group in sorted(grouped, key=lambda p: float(p[0].split("_")[-1])):
+      mean_sums[name] += group["latency"].mean()
+    df_dict["TTL"].append(df)
 
   for name in mean_sums.keys():
     mean_sums[name] = mean_sums[name] / len(paths)
@@ -104,6 +120,12 @@ def plot(paths, users, warm):
   ax2 = ax.twinx()
   plt.tight_layout()
   fig.set_size_inches(5, 3)
+
+  map_labs = {'BoundedLoadsLoadBalancer': 'CH-BL', 'RandomForwardLoadBalancer': 'Random', 'RoundRobinLB': 'RR', 'ShardingContainerPoolBalancer': 'OW+GD',
+              'GreedyBalancer': 'Greedy', 'RandomLoadUpdateBalancer': 'old_RLU', 'TTL': 'OW+TTL',
+              "EnhancedShardingContainerPoolBalancer": "Enhance", "RLUShardingBalancer": "RLU_shard", "LeastLoadBalancer": "LL",
+              "RLULFSharding": "RLU"}
+  labels = [map_labs[x] for x in labels]
 
   poss = [2*i for i in range(len(pts))]
   ax.boxplot(pts, labels=labels, positions=poss, showfliers=False)

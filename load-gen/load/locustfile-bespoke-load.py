@@ -46,6 +46,8 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
     # if self.user.environment.shape_class.bursty:
     #   print("bursty")
     action = random.choices(population=acts, weights=normal_freqs, k=1)[0]
+    end_t = 0
+    start_t = 0
     # else:
     #   print("not bursty")
     #   action = random.choices(population=acts, weights=normal_freqs, k=1)[0]
@@ -110,7 +112,7 @@ class TransactionalWaitForFunctionCoplete(SequentialTaskSet):
  
 class BurstyShape(LoadTestShape):
   spawn_rate = 5
-  curr_users = 20
+  curr_users = 5
   # bursty = False
   length = 60*60
   inc_users = 60*5 # every 5 minutes

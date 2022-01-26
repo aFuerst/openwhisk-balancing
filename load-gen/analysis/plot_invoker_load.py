@@ -87,6 +87,9 @@ def plot(path, metric):
         renamed = df.rename(columns= {metric : new_col})
         mean_df = mean_df.join(renamed[[new_col]])
 
+  if mean_df is None:
+    return
+
   times = date_idx_to_min(mean_df.index)
   if "mem" in metric.lower():
     ax.hlines(32*1024, times[0], times[-1], color='red')
@@ -116,46 +119,46 @@ def plot(path, metric):
   plt.close(fig)
   # print(save_fname)
 
-  if metric == "loadAvg":
-    fig, ax = plt.subplots()
-    plt.tight_layout()
-    fig.set_size_inches(5,3)
+  # if metric == "loadAvg":
+  #   fig, ax = plt.subplots()
+  #   plt.tight_layout()
+  #   fig.set_size_inches(5,3)
     
-    file = os.path.join(path, "parsed_successes.csv")
-    def convert(t):
-      # 2021-11-01 09:16:35
-      return datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
+  #   file = os.path.join(path, "parsed_successes.csv")
+  #   def convert(t):
+  #     # 2021-11-01 09:16:35
+  #     return datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
 
-    df = pd.read_csv(file, index_col="start_time", converters={"start_time":convert})
-    df["duration"] = df["duration"] / 1000.0
-    grouped = df.groupby(by="function")
+  #   df = pd.read_csv(file, index_col="start_time", converters={"start_time":convert})
+  #   df["duration"] = df["duration"] / 1000.0
+  #   grouped = df.groupby(by="function")
 
-    for name, group in grouped:
-      if "150" in name:
-        group = group[group["cold"] == False]
-        normed = group["latency"] / group["latency"].mean()
-        normed = normed.sort_index()
-        min_t = min(normed.index)
-        max_t = max(normed.index)
-        # if name == "json_100":
-        #   print(min_t, max_t)
-        normed.index -= min_t
-        ax.plot(normed, 'o')
+  #   for name, group in grouped:
+  #     if "150" in name:
+  #       group = group[group["cold"] == False]
+  #       normed = group["latency"] / group["latency"].mean()
+  #       normed = normed.sort_index()
+  #       min_t = min(normed.index)
+  #       max_t = max(normed.index)
+  #       # if name == "json_100":
+  #       #   print(min_t, max_t)
+  #       normed.index -= min_t
+  #       ax.plot(normed, 'o')
 
-    means = grouped[["duration", "latency"]].mean()
+  #   means = grouped[["duration", "latency"]].mean()
 
-    func_time_split = df["transaction_name"].apply(str.split, args=("-")).to_list()
+  #   func_time_split = df["transaction_name"].apply(str.split, args=("-")).to_list()
 
-    min_t = min(mean_df.index)
-    max_t = max(mean_df.index)
-    mean_df.index -= min_t 
-    # print(min_t, max_t)
-    # print(metric, mean_df.columns)
-    ax.plot(times, mean_df["mean"], label="Mean Load", color='k')
-    ax.legend()
-    save_fname = os.path.join(save_pth, "{}-{}.pdf".format(users, "load_vs_latency"))
-    plt.savefig(save_fname, bbox_inches="tight")
-    plt.close(fig)
+  #   min_t = min(mean_df.index)
+  #   max_t = max(mean_df.index)
+  #   mean_df.index -= min_t 
+  #   # print(min_t, max_t)
+  #   # print(metric, mean_df.columns)
+  #   ax.plot(times, mean_df["mean"], label="Mean Load", color='k')
+  #   ax.legend()
+  #   save_fname = os.path.join(save_pth, "{}-{}.pdf".format(users, "load_vs_latency"))
+  #   plt.savefig(save_fname, bbox_inches="tight")
+  #   plt.close(fig)
 
 for metric in [("loadAvg", "Load"), ("usedMem", "Used Memory"), ("containerActiveMem", "Active Memory"), ("vm_cpu", "CPU")]:
   plot(path, metric=metric)

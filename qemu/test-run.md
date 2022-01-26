@@ -49,6 +49,15 @@ db_host=172.29.200.161
 db_port=5989
 EOL
 
+mkdir -p /home/ow/openwhisk-balancing/ansible/roles/nginx/files/
+cp /home/ow/openwhisk-caching/ansible/roles/nginx/files/* /home/ow/openwhisk-balancing/ansible/roles/nginx/files/
+
+mkdir -p /home/ow/openwhisk-balancing/ansible/roles/invoker/files/
+cp /home/ow/openwhisk-caching/ansible/roles/invoker/files/* /home/ow/openwhisk-balancing/ansible/roles/invoker/files/
+
+mkdir -p /home/ow/openwhisk-balancing/ansible/roles/controller/files/
+cp /home/ow/openwhisk-caching/ansible/roles/controller/files/* /home/ow/openwhisk-balancing/ansible/roles/controller/files/
+
 ansible-playbook -i environments/$ENVIRONMENT properties.yml
 ansible-playbook -i environments/$ENVIRONMENT couchdb.yml
 ansible-playbook -i environments/$ENVIRONMENT initdb.yml
@@ -58,7 +67,7 @@ ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean -e OPE
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e mode=clean
 # for redis
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e redis_port=$redisPort -e redis_pass=$redisPass
-ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="10G" -e controller_loadbalancer_invoker_cores=16 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.5 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy="LoadAvg" -e controller_algorithm="ConsistentCache" -e OPENWHISK_TMP_DIR=$whisk_logs_dir -e controller_loadbalancer_invoker_boundedceil=1.2  -e invoker_eviction_strategy="GD" -e controller_loadbalancer_spi="org.apache.openwhisk.core.loadBalancer.EnhancedShardingContainerPoolBalancer"  -e invoker_parallel_runs=100 -e controller_horizscale=false -e invoker_idle_container=60minutes -e invoker_container_network_name=host  -e invoker_pause_grace=60minutes
+ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=alfuerst -e invoker_user_memory="10G" -e controller_loadbalancer_invoker_cores=16 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.5 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy="LoadAvg" -e controller_algorithm="ConsistentCache" -e OPENWHISK_TMP_DIR=$whisk_logs_dir -e controller_loadbalancer_invoker_boundedceil=1.2  -e invoker_eviction_strategy="GD" -e controller_loadbalancer_spi="org.apache.openwhisk.core.loadBalancer.RLULFSharding"  -e invoker_parallel_runs=100 -e controller_horizscale=false -e invoker_idle_container=60minutes -e invoker_container_network_name=host -e invoker_pause_grace=60minutes
 ```
 
 ## Run simple OW thing

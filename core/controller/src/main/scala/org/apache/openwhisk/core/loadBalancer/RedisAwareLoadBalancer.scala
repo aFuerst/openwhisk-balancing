@@ -413,19 +413,24 @@ case class RedisAwareLoadBalancerState(
   def wakeUpInvoker()(implicit logging: Logging, actorSystem: ActorSystem) : Unit = {
     val now = Instant.now().toEpochMilli()
 
+    // logging.info(this, s"in wakeUpInvoker")(TransactionId.invokerRedis)
     if (! lbConfig.horizScale) {
       return;
     }
 
+    // logging.info(this, s"horizontal scaling enabled")(TransactionId.invokerRedis)
     if ((now - lastStartInvokMilis) / 1000 < 60) {
       return;
     }
 
     val acquired = wakeInvokerSem.tryAcquire()
 
-    if (!acquired) {
+  //  logging.info(this, s"enough time passed")(TransactionId.invokerRedis)
+   if (!acquired) {
       return;
     }
+
+    // logging.info(this, s"acquired semaphore")(TransactionId.invokerRedis)
 
     lastStartInvokMilis = now;
     implicit val ec: ExecutionContext = actorSystem.dispatcher
@@ -436,6 +441,7 @@ case class RedisAwareLoadBalancerState(
 
       if (down.isEmpty) {
         logging.info(this, s"No downed invokers to start")(TransactionId.invokerRedis)
+        wakeInvokerSem.release()
         return;
       }
 

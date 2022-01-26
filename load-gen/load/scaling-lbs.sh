@@ -1,21 +1,21 @@
 #!/bin/bash
 
 export HOST=https://172.29.200.161:10001
-export AUTH=e0ddac86-ac5a-45e0-bf37-ec3dcf3f70de:WwX7nwMvLWHQhW2vjZtyZkL8QVTcKa4PplCp2riFYn49TnBogJb21V09EcEzIw2D
+export AUTH=5e9fb463-3082-4fce-847b-dbc17a7fbfa0:AZcoEhmD4dMsFTu7SPOAI4NkyDqtyaqkbxyud5bnMW5MssmPtQoC9BggNweGcJIj
 
-for ITERATION in {0..0}
+for ITERATION in 6
 do
 
-for USERS in 50
+for USERS in 120
 do
 
 export USER_TOT=$USERS
 
 # BoundedLoadsLoadBalancer RoundRobinLB ShardingContainerPoolBalancer
-for BALANCER in RandomForwardLoadBalancer
+for BALANCER in RLULFSharding
 do
 
-MEMORY="10G"
+MEMORY="32G"
 IMAGE="alfuerst"
 LOADSTRAT="LoadAvg"
 ALGO="RandomForward"
@@ -28,7 +28,7 @@ redisPass='OpenWhisk'
 redisPort=6379
 ansible=/home/ow/openwhisk-balancing/ansible
 
-BASEPATH="/extra/alfuerst/20min-scaling-20sec/$ITERATION/"
+BASEPATH="/extra/alfuerst/openwhisk-logs-two/scaling/$ITERATION/"
 
 r=1
 warmup=$(($USERS/$r))
@@ -41,7 +41,7 @@ pw='OwUser'
 cmd="cd $ansible; echo $ENVIRONMENT; export OPENWHISK_TMP_DIR=$whisk_logs_dir; 
 ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e mode=clean;
 ansible-playbook -i environments/$ENVIRONMENT apigateway.yml -e redis_port=$redisPort -e redis_pass=$redisPass;
-ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=4 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.2 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=1.5 -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER -e controller_horizscale=true -e invoker_idle_container=60minutes"
+ansible-playbook -i environments/$ENVIRONMENT openwhisk.yml -e docker_image_tag=latest -e docker_image_prefix=$IMAGE -e invoker_user_memory=$MEMORY -e controller_loadbalancer_invoker_cores=16 -e invoker_use_runc=false -e controller_loadbalancer_invoker_c=1.0 -e controller_loadbalancer_redis_password=$redisPass -e controller_loadbalancer_redis_port=$redisPort -e invoker_redis_password=$redisPass -e invoker_redis_port=$redisPort -e limit_invocations_per_minute=10000 -e limit_invocations_concurrent=10000 -e limit_fires_per_minute=10000 -e limit_sequence_max_length=10000 -e controller_loadstrategy=$LOADSTRAT -e controller_algorithm=$ALGO -e controller_loadbalancer_invoker_boundedceil=6 -e invoker_eviction_strategy=$EVICTION -e controller_loadbalancer_spi=org.apache.openwhisk.core.loadBalancer.$BALANCER -e controller_horizscale=true -e invoker_idle_container=60minutes -e invoker_container_network_name=host -e invoker_pause_grace=60minutes"
 ANSIBLE_HOST="$user@172.29.200.161"
 sshpass -p $pw ssh $ANSIBLE_HOST "$cmd" &> "$pth/logs.txt"
 

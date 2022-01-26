@@ -19,7 +19,7 @@ args = parser.parse_args()
 
 def path_to_key(pth):
   # print(pth)
-  parts = pth.split("/")
+  parts = pth.strip("/").split("/")
   try:
     return parts[-1].split("-")[1]
   except:
@@ -30,10 +30,10 @@ def compute_exe_time(data):
   return running_t
 
 def compute_overhead(data):
-  # running_t = data["end_t"] - data["start_t"]
-  # end = datetime.fromtimestamp(data["end_t"]).isoformat()
-  # start = datetime.fromtimestamp(data["start_t"]).isoformat()
   running_t = compute_exe_time(data)
+  # if (data["latency"] - running_t) < 0:
+  #   print(data['function'], data["latency"], data["end_t"] -
+  #         data["start_t"], data["duration"]/1000)
   return data["latency"] - running_t
 
 def compute_ratio(data):
@@ -60,17 +60,20 @@ def calc(paths, users):
     df = df[df["cold"] == False]
 
     overheads = df.apply(compute_overhead, axis=1)
+    overheads = overheads[overheads>0]
     execs = df.apply(compute_exe_time, axis=1)
+    execs = execs[execs >0]
     ratio = df.apply(compute_ratio, axis=1)
+    ratio = ratio[ratio>0]
 
     overhead_dict[path_to_key(pth)] += overheads.to_list()
     execs_dict[path_to_key(pth)] += execs.to_list()
     ratios_dict[path_to_key(pth)] += ratio.to_list()
 
   for bl in sorted(overhead_dict.keys()):
-    print(bl, np.min(overhead_dict[bl]), np.quantile(overhead_dict[bl], [0.1, 0.5, 0.8, 0.90, 0.99]))
-    print(bl, np.min(execs_dict[bl]), np.quantile(execs_dict[bl], [0.1, 0.5, 0.8, 0.90, 0.99]))
-    print(bl, np.min(ratios_dict[bl]), np.quantile(ratios_dict[bl], [0.1, 0.5, 0.8, 0.90, 0.99]))
+    print(bl, np.median(overhead_dict[bl]), np.quantile(overhead_dict[bl], [0.1, 0.5, 0.8, 0.90, 0.99]))
+    print(bl, np.median(execs_dict[bl]), np.quantile(execs_dict[bl], [0.1, 0.5, 0.8, 0.90, 0.99]))
+    print(bl, np.median(ratios_dict[bl]), np.quantile(ratios_dict[bl], [0.1, 0.5, 0.8, 0.90, 0.99]))
 
 
 

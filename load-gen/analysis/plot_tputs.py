@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
+parser.add_argument("--balancers", nargs='+', required=True)
 parser.add_argument("--users", type=int, default=100, required=False)
 parser.add_argument("--ceil", required=False, action='store_true')
 args = parser.parse_args()
@@ -28,7 +29,8 @@ def path_to_lb(pth):
   else:
     return parts[-1].split("-")[1]
 
-def plot(paths, users):
+
+def plot(paths, users, balancers):
   warm_dict = defaultdict(list)
   cold_dict = defaultdict(list)
   for pth in paths:
@@ -36,6 +38,8 @@ def plot(paths, users):
     if not os.path.exists(file):
       continue
     if not str(users) + "-" in pth:
+      continue
+    if path_to_lb(pth) not in balancers:
       continue
     df = pd.read_csv(file)
     # print(file)
@@ -54,9 +58,10 @@ def plot(paths, users):
   if args.ceil:
     labels = [x for x in sorted(warm_dict.keys())]
   else:
-    map_labs = {'BoundedLoadsLoadBalancer':'Bounded', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR',
+    map_labs = {'BoundedLoadsLoadBalancer':'CH-BL', 'RandomForwardLoadBalancer':'Random', 'RoundRobinLB':'RR',
           'ShardingContainerPoolBalancer':'Sharding', 'GreedyBalancer':'Greedy', 'RandomLoadUpdateBalancer':'old_RLU',
-            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU"}
+                "EnhancedShardingContainerPoolBalancer": "Enhance", "RLUShardingBalancer": "RLU", "LeastLoadBalancer": "LL",
+                "RLULFSharding": "RLU"}
     labels = [map_labs[x] for x in sorted(warm_dict.keys())]
   # print(labels)
   colds = []
@@ -86,4 +91,4 @@ def plot(paths, users):
   plt.close(fig)
 
 
-plot(args.path, args.users)
+plot(args.path, args.users, args.balancers)

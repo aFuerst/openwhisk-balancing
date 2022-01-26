@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.patches as mpatches
-mpl.rcParams.update({'font.size': 14})
+mpl.rcParams.update({'font.size': 12})
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype'] = 42
 mpl.use('Agg')
@@ -15,19 +15,13 @@ import pickle
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
+parser.add_argument("--ttl", nargs='+', required=False)
 parser.add_argument("--users", type=int, default=50, required=False)
 args = parser.parse_args()
 
 users = args.users
 # for p in args.path:
 #   print(p)
-
-rand_str = "RandomForwardLoadBalancer"
-bound_str = "BoundedLoadsLoadBalancer"
-rr_str = "RoundRobinLB"
-shard_str = "ShardingContainerPoolBalancer"
-rlu_str = "RLUShardingBalancer"
-enhance="EnhancedShardingContainerPoolBalancer"
 
 base_file = "parsed_successes.csv"
 
@@ -88,24 +82,46 @@ def Wnorms(expfs):
     if mean_warm is None:
       mean_warm = pd.Series(mean_lats['latency'], index=mean_lats.index)
       counts = lgrps['latency'].count()
+      # if any(counts.isna()):
+      #   print("nan count orig")
+      #   print(lgrps[lgrps['latency'].count().isna()])
       # print(counts['cham_16'])
     else:
-      mean_warm = mean_warm.add(pd.Series(mean_lats['latency'], index=mean_warm.index))
-      counts = counts.add(lgrps['latency'].count())
+      mean_warm = mean_warm.add(
+          pd.Series(mean_lats['latency'], index=mean_warm.index), fill_value=0)
+      counts = counts.add(lgrps['latency'].count(), fill_value=0)
+      # if any(counts.isna()):
+      #   print("nan count")
+      #   print(counts)
+      #   for name, grp in lgrps:
+      #     if len(grp) <= 1:
+      #       print(name, len(grp))
+      #     if name == "gzip_1.1":
+      #       print(name, grp)
+      #   print("is nan: ",counts[counts.isna()])
+      #   exit()
       # print(lgrps['latency'].count()['cham_16'])
     # print(counts.index[0])
     # print("tot:", counts['cham_16'])
     # print(counts[counts.index[0]])
     # print(counts)
+  # if "LeastLoadBalancer" in expfs[0]:
+  #   print(mean_warm)
   mean_warm /= len(expfs)
   norm_warm = pd.Series(mean_warm/warm_times['warm'], index=mean_warm.index)
+  # if "LeastLoadBalancer" in expfs[0]:
+  #   print(mean_warm)
+  #   print(norm_warm)
 
   # counts = lgrps.count()
   # counts = counts.rename(columns={'latency':'counts'})
   # mean_warm = mean_warm.merge(counts, on='function')
   C=sum(counts)
   mean_warm = pd.Series((norm_warm*counts)/C, index=mean_warm.index)
-  # print(mean_warm)
+  # if "LeastLoadBalancer" in expfs[0]:
+  #   print(lgrps["function"].groups["gzip_1.1"])
+  #   print("counts", counts[counts.isna()])
+  #   print(mean_warm)
   return mean_warm, counts
   #sum(mean_warm['Wnorm'])
 
@@ -113,27 +129,31 @@ def compare(numerator_str, denom_str, paths):
   numerator_paths = []
   # print("{}-{}".format(users, numerator_str))
   for pth in paths:
-    if "{}-{}".format(users, numerator_str) in pth and os.path.exists(os.path.join(pth, base_file)):
+    if "/{}-{}".format(users, numerator_str) in pth and os.path.exists(os.path.join(pth, base_file)):
       # print("num", pth)
       numerator_paths.append(os.path.join(pth, base_file))
   if len(numerator_paths) == 0:
+    print("num err", numerator_str)
     return
   # numerator_path = os.path.join(path, "{}-{}".format(users, numerator_str), base_file)
   # print(numerator_str)
+  # print(numerator_paths)
   numerator, num_counts = Wnorms(numerator_paths)
+  # print(numerator_str, numerator[numerator.isna()])
   # sum(bounded['Wnorm'])
   # print(numerator)
   # denom_path = os.path.join(path, "{}-{}".format(users, denom_str), base_file)
   denom_paths = []
   # print("{}-{}".format(users, denom_str))
   for pth in paths:
-    if "{}-{}".format(users, denom_str) in pth and os.path.exists(os.path.join(pth, base_file)):
+    if "/{}-{}".format(users, denom_str) in pth and os.path.exists(os.path.join(pth, base_file)):
       # print("demon", pth)
       denom_paths.append(os.path.join(pth, base_file))
   if len(denom_paths) == 0:
+    print("demon err", denom_str)
     return
   # print(denom_str)
-  denom, demon_counts =Wnorms(denom_paths)
+  denom, demon_counts = Wnorms(denom_paths)
 
   fig, ax = plt.subplots()
   plt.tight_layout()
@@ -175,9 +195,10 @@ def compare(numerator_str, denom_str, paths):
   # ax.legend()
   # ax.set_yscale('log')
 
-  map_labs = {'BoundedLoadsLoadBalancer': 'Bounded', 'RandomForwardLoadBalancer': 'Random Forward',
-            'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'Sharding', #'RandomLoadUpdateBalancer': 'RLU',
-            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU", "LeastLoadBalancer":"LL"}
+  map_labs = {'BoundedLoadsLoadBalancer': 'CH-BL', 'RandomForwardLoadBalancer': 'Random Forward',
+            'RoundRobinLB': 'Round Robin', 'ShardingContainerPoolBalancer': 'OW+GD', 'TTL': 'OW+TTL',
+            "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU", "LeastLoadBalancer":"LL",
+            "RLULFSharding":"RLU"}
 
   ax.set_title("{} / {}".format(map_labs[numerator_str], map_labs[denom_str]))
   save_fname = os.path.join("{}-compare-functions-{}-{}.pdf".format(users, numerator_str, denom_str))
@@ -185,12 +206,13 @@ def compare(numerator_str, denom_str, paths):
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)
 
-# compare(shard_str, bound_str, args.path)
-# compare(shard_str, rand_str, args.path)
-# compare(bound_str, rand_str, args.path)
-# compare(rr_str, rand_str, args.path)
+rand_str = "RandomForwardLoadBalancer"
+bound_str = "BoundedLoadsLoadBalancer"
+rr_str = "RoundRobinLB"
+shard_str = "ShardingContainerPoolBalancer"
+rlu_str = "RLULFSharding"
+enhance="EnhancedShardingContainerPoolBalancer"
+
 compare(shard_str, rlu_str, args.path)
 compare("LeastLoadBalancer", rlu_str, args.path)
-# compare(bound_str, rlu_str, args.path)
-# compare(rand_str, rlu_str, args.path)
  

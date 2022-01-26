@@ -37,7 +37,7 @@ ax.set_xticklabels(labels)
 # ax.set_xlim(0.25, len(labels) + 0.75)
 # ax.set_xlabel('Sample name')
 
-save_fname = os.path.join("function_breakdown_mean.png")
+save_fname = os.path.join("function_breakdown_mean.pdf")
 plt.savefig(save_fname, bbox_inches="tight")
 plt.close(fig)
 
@@ -63,6 +63,6 @@ ax.set_xticklabels(labels)
 # ax.set_xlim(0.25, len(labels) + 0.75)
 # ax.set_xlabel('Sample name')
 
-save_fname = os.path.join("function_breakdown_min.png")
+save_fname = os.path.join("function_breakdown_min.pdf")
 plt.savefig(save_fname, bbox_inches="tight")
 plt.close(fig)
