@@ -114,7 +114,7 @@ def plot(path, metric):
   mean_df["std"] = mean_df[invoker_cols].std(axis=1)
   mean_df["var"] = mean_df[invoker_cols].var(axis=1)
   # print(invok_start_times.keys())
-
+  print("invok_start_times:", invok_start_times)
   for i, invoker in enumerate(invoker_cols):
     inv_ser = mean_df[invoker]
     if invoker in invok_start_times:

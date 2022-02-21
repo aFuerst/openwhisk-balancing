@@ -217,7 +217,7 @@ def plotPerFunc(load_df, metric):
     ax.scatter(xs, ys, color=colors[i])
 
   ax.set_ylabel("Normalized latency")
-  ax.set_xlabel("Invoker {}".format(metric))
+  ax.set_xlabel("Invoker Load")
   ax.legend()
   save_fname = os.path.join(path, "latencies", "latency_to_load.pdf")
 

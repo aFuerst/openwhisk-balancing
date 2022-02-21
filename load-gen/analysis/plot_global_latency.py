@@ -155,7 +155,7 @@ def plot(norm_by_cnt=False, specific_funcs=None, name=""):
   print(data)
   print("")
 
-  ax.bar(labels, data, yerr=stds)
+  ax.bar(labels, data, yerr=stds, color="firebrick")
 
   if norm_by_cnt:
     save_fname = os.path.join("{}-global-latencies-cntnorm{}.pdf".format(args.users, name))

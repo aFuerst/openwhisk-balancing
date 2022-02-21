@@ -232,14 +232,22 @@ def plotPerFunc(load_df, metric):
 
     # Plot regression line
     # print(i, func, len(colors))
-    ax.plot(xseq, a + b * xseq, label=func, color=colors[i])
-    ax.scatter(xs, ys, label=func, color=colors[i])
+    label=func
+    if func == "aes":
+      label = "AES"
+    if func == "train":
+      label = "Sklearn"
+    ax.plot(xseq, a + b * xseq, label=label, color=colors[i])
+    ax.scatter(xs, ys, label=label, color=colors[i])
     # ax.scatter([1,2,3], [8,9,0], label="AAGG", color=colors[i])
 
     # break
 
     ax.set_ylabel("Normalized latency")
-    ax.set_xlabel("Invoker {}".format(metric))
+    xlabel = "Invoker {}".format(metric)
+    if metric == "loadAvg":
+      xlabel = "Invoker Load"
+    ax.set_xlabel(xlabel)
     ax.legend()
     save_fname = os.path.join(
         path, "latencies", "{}-{}-{}.png".format("latency_to_load", metric, func))
@@ -309,6 +317,10 @@ def plot(load_df, metric):
     # Create sequence of 100 numbers from 0 to 100
     xseq = np.linspace(min(xs), max(xs), num=100)
     # Plot regression line
+    if func == "aes":
+      func = "AES"
+    if func == "train":
+      func = "Sklearn"
     ax.plot(xseq, a + b * xseq, label=func, color=colors[i])
 
   ax.set_xlabel("Invoker {}".format(metric))

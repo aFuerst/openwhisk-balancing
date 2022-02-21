@@ -206,15 +206,15 @@ def plot_latencies(paths, norm_by_cnt=False):
 
   print(labels)
   print(data)
-  ax.bar(labels, data, yerr=stds, color="gray")
+  ax.bar(labels, data, yerr=stds, color="firebrick")
 
   if norm_by_cnt:
     save_fname = os.path.join("openload/openload-latencies-cntnorm.pdf")
   else:
     save_fname = os.path.join("openload/openload-latencies.pdf")
 
-  ax.set_xlabel("Global Latency Increase %")
-  ax.set_ylabel("LoadBalancing Policy")
+  ax.set_ylabel("Global Latency Increase %")
+  ax.set_xlabel("LoadBalancing Policy")
 
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)

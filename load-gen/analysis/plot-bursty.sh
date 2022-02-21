@@ -31,6 +31,7 @@ do
 
 python3 plot_tputs.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/* --users $USERS --balancers RLULFSharding ShardingContainerPoolBalancer LeastLoadBalancer BoundedLoadsLoadBalancer &
 python3 compare_function.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/* --users $USERS &
+python3 compare_function.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/* --users $USERS --global &
 python3 plot_invocations.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/*/* --users $USERS &
 python3 compare_latencies.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/*/* --users $USERS --ttl /extra/alfuerst/openwhisk-logs-two/30min-compare-ttl-bursty/*/* --balancers RLULFSharding ShardingContainerPoolBalancer LeastLoadBalancer BoundedLoadsLoadBalancer &
 python3 plot_global_latency.py --path /extra/alfuerst/openwhisk-logs-two/bursty/*/* --users $USERS --ttl /extra/alfuerst/openwhisk-logs-two/30min-compare-ttl-bursty/*/* --balancers RLULFSharding ShardingContainerPoolBalancer LeastLoadBalancer BoundedLoadsLoadBalancer &

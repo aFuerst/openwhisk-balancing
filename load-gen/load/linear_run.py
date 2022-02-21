@@ -20,10 +20,10 @@ class Action:
 
 action_dict = {}
 
-for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
-  path = os.path.join("../ow-actions", zip_file)
-  url = add_web_action(action_name, path, container, memory=memory, host=host)
-  action_dict[action_name] = Action(action_name, url, warm_time, cold_time)
+# for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
+#   path = os.path.join("../ow-actions", zip_file)
+#   url = add_web_action(action_name, path, container, memory=memory, host=host)
+#   action_dict[action_name] = Action(action_name, url, warm_time, cold_time)
 
 cold_results = defaultdict(list)
 warm_results = defaultdict(list)
@@ -65,9 +65,9 @@ with open("warmdata_16_2.pckl", "w+b") as f:
 
 for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, actions, containers, mem, warm_times, cold_times):
   path = os.path.join("../ow-actions", zip_file)
-  action_dict[action_name] = Action(action_name, url, warm_time, cold_time)
-  print(name)
-  while len(cold_results[name]) < 10:
+  # action_dict[action_name] = Action(action_name, url, warm_time, cold_time)
+  print(action_name)
+  while len(cold_results[action_name]) < 10:
     url = add_web_action(action_name, path, container, memory=memory, host=host)
     start = time()
     r = requests.get(url, verify=False)
@@ -75,7 +75,7 @@ for zip_file, action_name, container, memory, warm_time, cold_time in zip(zips, 
     ret_json = r.json()
     if "cold" in ret_json:
         if ret_json["cold"]:
-          cold_results[name].append(latency)
+          cold_results[action_name].append(latency)
     else:
       print("weird json:", ret_json)
 
@@ -83,7 +83,7 @@ with open("colddata_16.pckl", "w+b") as f:
   pickle.dump(cold_results, f)
 
 for k in cold_results.keys():
-  print("cold results, avg = {}; min = {}".format(k), sum(cold_results[k]) / len(cold_results[k]), min(cold_results[k]))
+  print("{} cold results, avg = {}; min = {}".format(k, sum(cold_results[k]) / len(cold_results[k]), min(cold_results[k])))
 
 # df = pd.DataFrame.from_records(data, columns=[func, "was_cold", "latency"])
 # df.to_csv("run.csv")

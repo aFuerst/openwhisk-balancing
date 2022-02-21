@@ -34,6 +34,7 @@ def main(args):
     cold = False
     # return {"body": { "latency":-1, "cold":was_cold, "msg":msg }}
     try:
+        start = time()
         dataset_bucket = args.get("dataset_bucket", "")
         dataset_object_key = args.get("dataset_object_key", "")
         model_bucket = args.get("model_bucket", "")
@@ -46,7 +47,6 @@ def main(args):
         urllib.request.urlretrieve(src, download_path)
         df = pd.read_csv(download_path)
 
-        start = time()
         df['train'] = df['Text'].apply(cleanup)
 
         tfidf_vector = TfidfVectorizer(min_df=100).fit(df['train'])

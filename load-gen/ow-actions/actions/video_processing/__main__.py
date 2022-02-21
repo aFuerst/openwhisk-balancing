@@ -28,7 +28,6 @@ def video_processing(object_key, video_path):
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(result_file_path, fourcc, 20.0, (width, height))
 
-    start = time()
     while video.isOpened():
         ret, frame = video.read()
 
@@ -41,12 +40,9 @@ def video_processing(object_key, video_path):
         else:
             break
 
-    end = time()
-    latency = end - start
-
     video.release()
     out.release()
-    return latency, result_file_path, start, end
+    return result_file_path
 
 cold = True
 
@@ -56,6 +52,8 @@ def main(args):
     cold = False
     # return {"body": { "msg":"TEST", "latency":0, "cold":was_cold }}
     try:
+        start = time()
+
         input_bucket = args.get("input_bucket", "")
         object_key = args.get("object_key", "")
         output_bucket = args.get("output_bucket", "")
@@ -70,6 +68,8 @@ def main(args):
 
         # TODO: Upload
         # s3_client.upload_file(upload_path, output_bucket, upload_path.split("/")[FILE_PATH_INDEX])
+        end = time()
+        latency = end - start
 
         return {"body": { "latency":latency, "cold":was_cold, "start":start, "end":end }}
     except Exception as e:

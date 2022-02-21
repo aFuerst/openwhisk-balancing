@@ -15,7 +15,8 @@ import pickle
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--path", nargs='+', required=True)
-parser.add_argument("--ttl", nargs='+', required=False)
+parser.add_argument("--ttl", action="store_true")
+parser.add_argument("--plotglobal", action="store_true")
 parser.add_argument("--users", type=int, default=50, required=False)
 args = parser.parse_args()
 
@@ -126,6 +127,8 @@ def Wnorms(expfs):
   #sum(mean_warm['Wnorm'])
 
 def compare(numerator_str, denom_str, paths):
+  if numerator_str == denom_str:
+    raise Exception("Cannot compare function to itself!!")
   numerator_paths = []
   # print("{}-{}".format(users, numerator_str))
   for pth in paths:
@@ -161,18 +164,23 @@ def compare(numerator_str, denom_str, paths):
 
   compared = numerator/denom
   # print(sorted(compared))
-  ax.hlines(1.0, xmin=-0.1, xmax=len(compared)+1-.9, color='black')
+
+  base = 0.0
+
+  ax.hlines(base, xmin=-0.1, xmax=len(compared)-.9, color='black')
+  if args.plotglobal:
+    ax.hlines(base, xmin=-0.1, xmax=len(compared)+1-.9, color='black')
 
   # ax.plot(sorted(compared),marker='o',alpha=0.3)
 
   ymin = []
   ymax = []
   for pt in sorted(compared):
-    if pt <= 1:
-      ymin.append(pt)
-      ymax.append(1)
+    if pt <= 1.0:
+      ymin.append(-1.0/pt)
+      ymax.append(base)
     else:
-      ymin.append(1)
+      ymin.append(base)
       ymax.append(pt)
   
   handles= []
@@ -186,12 +194,13 @@ def compare(numerator_str, denom_str, paths):
     total += num_counts[idx] + demon_counts[idx]
 
   avg = weighted_total / total
-  ax.vlines([len(compared)], 1, avg, color='red')
-  handles.append(mpatches.Patch(color="red", label='Global Average'))
-  ax.legend(handles=handles, loc='upper left')#, labels=leg_labels)
+  if args.plotglobal:
+    ax.vlines([len(compared)], base, avg, color='red')
+    handles.append(mpatches.Patch(color="red", label='Global Average'))
+    ax.legend(handles=handles, loc='upper left')#, labels=leg_labels)
 
   # ax.set_ylabel("Invoker {}".format(metric))
-  ax.set_ylabel("Normalized latency")
+  ax.set_ylabel("Relative function latency")
   # ax.legend()
   # ax.set_yscale('log')
 
@@ -200,8 +209,17 @@ def compare(numerator_str, denom_str, paths):
             "EnhancedShardingContainerPoolBalancer":"Enhance", "RLUShardingBalancer":"RLU", "LeastLoadBalancer":"LL",
             "RLULFSharding":"RLU"}
 
+  if args.ttl:
+    if numerator_str == "ShardingContainerPoolBalancer":
+      numerator_str = "TTL"
+    if denom_str == "ShardingContainerPoolBalancer":
+      denom_str = "TTL"
+  plt.setp(ax.get_xticklabels(), visible=False)
+  ax.tick_params(axis='both', which='both', length=0)
   ax.set_title("{} / {}".format(map_labs[numerator_str], map_labs[denom_str]))
   save_fname = os.path.join("{}-compare-functions-{}-{}.pdf".format(users, numerator_str, denom_str))
+  if args.plotglobal:
+    save_fname = os.path.join("{}-compare-functions-{}-{}-global.pdf".format(users, numerator_str, denom_str))
   print(save_fname, avg)
   plt.savefig(save_fname, bbox_inches="tight")
   plt.close(fig)

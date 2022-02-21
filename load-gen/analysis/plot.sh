@@ -33,7 +33,13 @@ for USERS in 20 120
 do
 
 python3 plot_tputs.py --path /extra/alfuerst/openwhisk-logs-two/30min-compare/*/* --users $USERS --balancers RLULFSharding ShardingContainerPoolBalancer LeastLoadBalancer BoundedLoadsLoadBalancer &
+
 python3 compare_function.py --path /extra/alfuerst/openwhisk-logs-two/30min-compare/*/* --users $USERS &
+python3 compare_function.py --path /extra/alfuerst/openwhisk-logs-two/30min-compare-ttl/*/* /extra/alfuerst/openwhisk-logs-two/30min-compare/*/*-RLULFSharding /extra/alfuerst/openwhisk-logs-two/30min-compare/*/*-LeastLoadBalancer --ttl --users $USERS &
+
+python3 compare_function.py --path /extra/alfuerst/openwhisk-logs-two/30min-compare/*/* --users $USERS --plotglobal &
+python3 compare_function.py --path /extra/alfuerst/openwhisk-logs-two/30min-compare-ttl/*/* /extra/alfuerst/openwhisk-logs-two/30min-compare/*/*-RLULFSharding /extra/alfuerst/openwhisk-logs-two/30min-compare/*/*-LeastLoadBalancer --ttl --users $USERS --plotglobal &
+
 python3 plot_invocations.py --path /extra/alfuerst/openwhisk-logs-two/30min-compare/*/*/* --users $USERS &
 python3 plot_global_latency.py --path /extra/alfuerst/openwhisk-logs-two/30min-compare/*/* --ttl /extra/alfuerst/openwhisk-logs-two/30min-compare-ttl/*/* --users $USERS --balancers RLULFSharding ShardingContainerPoolBalancer LeastLoadBalancer BoundedLoadsLoadBalancer &
 
